@@ -7,6 +7,7 @@ export const STATE_KEY = 'state/main';
 export const SHARE_KEY = 'share/main';
 const STORE_NAME = 'tumbuh-keluarga';
 const MAX_STATE_BYTES = 3.5 * 1024 * 1024;
+const MAX_BODY_BYTES = 4.5 * 1024 * 1024;
 const RATE_LIMIT_MAX = 8;
 const RATE_LIMIT_WINDOW_MS = 15 * 60 * 1000;
 
@@ -140,7 +141,7 @@ export function clearSessionCookie(event) {
 
 export function readJsonBody(event) {
   const raw = event.body || '';
-  if (Buffer.byteLength(raw, 'utf8') > 1024 * 1024) {
+  if (Buffer.byteLength(raw, 'utf8') > MAX_BODY_BYTES) {
     throw Object.assign(new Error('Body terlalu besar.'), { code: 'payload_too_large', status: 413 });
   }
   try {

@@ -6,14 +6,19 @@
      ========================================================= */
 
   const STORAGE_KEY = 'tumbuh-app-v1';
-  const VALID_VIEWS = ['dashboard', 'growth', 'milestones', 'immunizations', 'journal', 'family', 'settings'];
+  const VALID_VIEWS = ['home', 'members', 'documents', 'contacts', 'bills', 'dashboard', 'growth', 'milestones', 'immunizations', 'journal', 'family', 'settings'];
   const VIEW_META = {
-    dashboard: { crumb: 'Ringkasan', title: 'Ringkasan' },
+    home: { crumb: 'Beranda', title: 'Beranda' },
+    members: { crumb: 'Anggota', title: 'Anggota' },
+    documents: { crumb: 'Dokumen', title: 'Dokumen' },
+    contacts: { crumb: 'Kontak', title: 'Kontak' },
+    bills: { crumb: 'Tagihan', title: 'Tagihan' },
+    dashboard: { crumb: 'Ringkasan anak', title: 'Ringkasan anak' },
     growth: { crumb: 'Tumbuh kembang', title: 'Tumbuh kembang' },
     milestones: { crumb: 'Milestone', title: 'Milestone' },
     immunizations: { crumb: 'Imunisasi', title: 'Imunisasi' },
     journal: { crumb: 'Jurnal kecil', title: 'Jurnal kecil' },
-    family: { crumb: 'Keluarga', title: 'Keluarga' },
+    family: { crumb: 'Sinkronisasi', title: 'Sinkronisasi' },
     settings: { crumb: 'Pengaturan', title: 'Pengaturan' }
   };
 
@@ -154,6 +159,1380 @@
   };
 
   /* =========================================================
+     Rumah keluarga: data & halaman (anggota, dokumen, kontak, tagihan)
+     ========================================================= */
+
+  const RELATIONS = ['Saya', 'Pasangan', 'Anak', 'Ayah', 'Ibu', 'Mertua', 'Kakek/Nenek', 'Saudara', 'Lainnya'];
+  const BLOOD_TYPES = ['', 'A', 'B', 'AB', 'O', 'A+', 'A−', 'B+', 'B−', 'AB+', 'AB−', 'O+', 'O−'];
+
+  const DOC_TYPES = {
+    kk: { label: 'Kartu Keluarga', short: 'KK', pill: 'green', expires: false },
+    nik: { label: 'KTP / NIK', short: 'NIK', pill: 'blue', expires: false },
+    akta: { label: 'Akta kelahiran', short: 'Akta', pill: 'lilac', expires: false },
+    bpjs: { label: 'BPJS Kesehatan', short: 'BPJS', pill: 'green', expires: false },
+    bpjstk: { label: 'BPJS Ketenagakerjaan', short: 'BPJS TK', pill: 'gold', expires: false },
+    paspor: { label: 'Paspor', short: 'Paspor', pill: 'coral', expires: true },
+    sim: { label: 'SIM', short: 'SIM', pill: 'gold', expires: true },
+    npwp: { label: 'NPWP', short: 'NPWP', pill: 'blue', expires: false },
+    nikah: { label: 'Buku / akta nikah', short: 'Nikah', pill: 'rose', expires: false },
+    asuransi: { label: 'Polis asuransi', short: 'Asuransi', pill: 'lilac', expires: true },
+    kendaraan: { label: 'STNK / BPKB', short: 'Kendaraan', pill: 'gold', expires: true },
+    lainnya: { label: 'Dokumen lain', short: 'Lainnya', pill: '', expires: true }
+  };
+
+  const CONTACT_CATS = {
+    darurat: { label: 'Darurat', icon: 'alert', pill: 'coral' },
+    kesehatan: { label: 'Kesehatan', icon: 'heart', pill: 'rose' },
+    sekolah: { label: 'Sekolah', icon: 'flag', pill: 'gold' },
+    kerja: { label: 'Kantor', icon: 'server', pill: 'blue' },
+    rumah: { label: 'Rumah & servis', icon: 'home', pill: 'green' },
+    lainnya: { label: 'Lainnya', icon: 'users', pill: '' }
+  };
+
+  const BILL_CATS = {
+    listrik: { label: 'Listrik', pill: 'gold' },
+    air: { label: 'Air', pill: 'blue' },
+    internet: { label: 'Internet & TV', pill: 'lilac' },
+    telepon: { label: 'Telepon / pulsa', pill: 'green' },
+    iuran: { label: 'Iuran / IPL', pill: 'rose' },
+    asuransi: { label: 'Asuransi', pill: 'lilac' },
+    cicilan: { label: 'Cicilan', pill: 'coral' },
+    pendidikan: { label: 'Pendidikan', pill: 'gold' },
+    pajak: { label: 'Pajak', pill: 'blue' },
+    lainnya: { label: 'Lainnya', pill: '' }
+  };
+
+  const FAMILY_VIEWS = ['home', 'members', 'documents', 'contacts', 'bills'];
+  const TUMBUH_VIEWS = ['dashboard', 'growth', 'milestones', 'immunizations', 'journal'];
+
+  function defaultHousehold() {
+    return { name: '', members: [], documents: [], contacts: [], bills: [] };
+  }
+
+  function cleanText(value, max) {
+    return String(value == null ? '' : value).trim().slice(0, max);
+  }
+
+  function cleanDate(value) {
+    const v = String(value || '').slice(0, 10);
+    return isValidISODate(v) ? v : '';
+  }
+
+  function normalizeHousehold(raw) {
+    const next = defaultHousehold();
+    if (!raw || typeof raw !== 'object') return next;
+    next.name = cleanText(raw.name, 60);
+
+    const memberIds = new Set();
+    next.members = (Array.isArray(raw.members) ? raw.members : [])
+      .filter((m) => m && typeof m === 'object' && cleanText(m.name, 80))
+      .map((m, index) => {
+        const id = String(m.id || `member-${index + 1}`);
+        memberIds.add(id);
+        return {
+          id,
+          name: cleanText(m.name, 80),
+          nickname: cleanText(m.nickname, 30),
+          relation: RELATIONS.includes(m.relation) ? m.relation : 'Lainnya',
+          sex: m.sex === 'P' ? 'P' : (m.sex === 'L' ? 'L' : ''),
+          birthPlace: cleanText(m.birthPlace, 60),
+          birthDate: cleanDate(m.birthDate),
+          bloodType: BLOOD_TYPES.includes(m.bloodType) ? m.bloodType : '',
+          allergies: cleanText(m.allergies, 300),
+          medical: cleanText(m.medical, 600),
+          phone: cleanText(m.phone, 30),
+          email: cleanText(m.email, 100),
+          occupation: cleanText(m.occupation, 100),
+          notes: cleanText(m.notes, 1000),
+          childId: m.childId ? String(m.childId) : '',
+          color: COLORS.includes(m.color) ? m.color : COLORS[index % COLORS.length],
+          createdAt: m.createdAt || new Date().toISOString()
+        };
+      });
+
+    next.documents = (Array.isArray(raw.documents) ? raw.documents : [])
+      .filter((d) => d && typeof d === 'object' && cleanText(d.number, 80))
+      .map((d, index) => ({
+        id: String(d.id || `doc-${index + 1}`),
+        type: DOC_TYPES[d.type] ? d.type : 'lainnya',
+        label: cleanText(d.label, 60),
+        memberId: memberIds.has(String(d.memberId)) ? String(d.memberId) : '',
+        number: cleanText(d.number, 80),
+        issuer: cleanText(d.issuer, 100),
+        issuedAt: cleanDate(d.issuedAt),
+        expiresAt: cleanDate(d.expiresAt),
+        storedAt: cleanText(d.storedAt, 120),
+        note: cleanText(d.note, 600),
+        createdAt: d.createdAt || new Date().toISOString()
+      }));
+
+    next.contacts = (Array.isArray(raw.contacts) ? raw.contacts : [])
+      .filter((c) => c && typeof c === 'object' && cleanText(c.name, 80))
+      .map((c, index) => ({
+        id: String(c.id || `contact-${index + 1}`),
+        name: cleanText(c.name, 80),
+        role: cleanText(c.role, 80),
+        category: CONTACT_CATS[c.category] ? c.category : 'lainnya',
+        phone: cleanText(c.phone, 30),
+        phone2: cleanText(c.phone2, 30),
+        address: cleanText(c.address, 300),
+        hours: cleanText(c.hours, 100),
+        note: cleanText(c.note, 600),
+        pinned: Boolean(c.pinned),
+        createdAt: c.createdAt || new Date().toISOString()
+      }));
+
+    next.bills = (Array.isArray(raw.bills) ? raw.bills : [])
+      .filter((b) => b && typeof b === 'object' && cleanText(b.name, 80))
+      .map((b, index) => {
+        const dueDay = Number(b.dueDay);
+        const amount = Number(b.amount);
+        return {
+          id: String(b.id || `bill-${index + 1}`),
+          name: cleanText(b.name, 80),
+          category: BILL_CATS[b.category] ? b.category : 'lainnya',
+          customerNumber: cleanText(b.customerNumber, 60),
+          accountName: cleanText(b.accountName, 80),
+          dueDay: Number.isInteger(dueDay) && dueDay >= 1 && dueDay <= 31 ? dueDay : null,
+          amount: Number.isFinite(amount) && amount > 0 ? Math.round(amount) : null,
+          payMethod: cleanText(b.payMethod, 80),
+          autopay: Boolean(b.autopay),
+          paidMonths: (Array.isArray(b.paidMonths) ? b.paidMonths : []).filter((x) => /^\d{4}-\d{2}$/.test(String(x))).slice(-24),
+          note: cleanText(b.note, 600),
+          createdAt: b.createdAt || new Date().toISOString()
+        };
+      });
+    return next;
+  }
+
+  /* ---------- data contoh keluarga (fiktif) ---------- */
+
+  function createDemoHousehold() {
+    const today = todayISO();
+    return normalizeHousehold({
+      name: 'Pratama',
+      members: [
+        { id: 'demo-m-ayah', name: 'Bima Pratama', nickname: 'Bima', relation: 'Saya', sex: 'L', birthPlace: 'Bandung', birthDate: '1992-03-14', bloodType: 'O+', allergies: '', medical: '', phone: '0812-0000-1111', occupation: 'Karyawan swasta', color: '#2E7D6B' },
+        { id: 'demo-m-ibu', name: 'Sari Lestari', nickname: 'Sari', relation: 'Pasangan', sex: 'P', birthPlace: 'Jakarta', birthDate: '1994-11-02', bloodType: 'A+', allergies: 'Udang', medical: '', phone: '0813-0000-2222', occupation: 'Guru', color: '#B96478' },
+        { id: 'demo-m-raka', name: 'Raka Pratama', nickname: 'Raka', relation: 'Anak', sex: 'L', birthPlace: 'Jakarta', birthDate: addMonthsISO(today, -28), bloodType: 'O+', allergies: 'Susu sapi (ringan)', medical: '', childId: 'demo-raka', color: '#E67655' }
+      ],
+      documents: [
+        { id: 'demo-d-kk', type: 'kk', memberId: '', number: '3174000000000001', issuer: 'Disdukcapil Jakarta Selatan', issuedAt: '2024-07-10', storedAt: 'Map biru, laci lemari kamar' },
+        { id: 'demo-d-nik1', type: 'nik', memberId: 'demo-m-ayah', number: '3273000000000002' },
+        { id: 'demo-d-nik2', type: 'nik', memberId: 'demo-m-ibu', number: '3174000000000003' },
+        { id: 'demo-d-bpjs', type: 'bpjs', memberId: 'demo-m-raka', number: '0001000000004', issuer: 'Faskes 1: Puskesmas Kebayoran' },
+        { id: 'demo-d-paspor', type: 'paspor', memberId: 'demo-m-ibu', number: 'X0000005', issuedAt: '2021-12-01', expiresAt: addMonthsISO(today, 2) },
+        { id: 'demo-d-sim', type: 'sim', memberId: 'demo-m-ayah', number: '9200-0000-0006', label: 'SIM A', expiresAt: '2028-03-14' }
+      ],
+      contacts: [
+        { id: 'demo-c-ibu', name: 'Ibu Ratna', role: 'Orang tua Sari', category: 'darurat', phone: '0815-0000-3333', pinned: true },
+        { id: 'demo-c-dokter', name: 'dr. Anisa, Sp.A', role: 'Dokter anak Raka', category: 'kesehatan', phone: '021-0000-4444', address: 'RS Contoh Sehat, Lt. 2', hours: 'Sen–Jum 16.00–20.00', pinned: true },
+        { id: 'demo-c-tk', name: 'Bu Wulan', role: 'Wali kelas daycare', category: 'sekolah', phone: '0816-0000-5555' },
+        { id: 'demo-c-rt', name: 'Pak RT 05', role: 'Ketua RT', category: 'rumah', phone: '0817-0000-6666' }
+      ],
+      bills: [
+        { id: 'demo-b-pln', name: 'PLN rumah', category: 'listrik', customerNumber: '530000000001', accountName: 'Bima Pratama', dueDay: 20, amount: 450000, payMethod: 'Token / m-banking' },
+        { id: 'demo-b-pdam', name: 'PAM Jaya', category: 'air', customerNumber: '00000002', dueDay: 20, amount: 120000 },
+        { id: 'demo-b-net', name: 'Internet rumah', category: 'internet', customerNumber: '1220000003', dueDay: 5, amount: 385000, autopay: true },
+        { id: 'demo-b-ipl', name: 'Iuran lingkungan', category: 'iuran', dueDay: 10, amount: 150000, payMethod: 'Transfer ke bendahara RT' }
+      ]
+    });
+  }
+
+  function removeDemoHousehold() {
+    const h = state.household;
+    const isDemo = (item) => String(item.id).startsWith('demo-');
+    const had = h.members.some(isDemo) || h.documents.some(isDemo) || h.contacts.some(isDemo) || h.bills.some(isDemo);
+    h.members = h.members.filter((x) => !isDemo(x));
+    h.documents = h.documents.filter((x) => !isDemo(x));
+    h.contacts = h.contacts.filter((x) => !isDemo(x));
+    h.bills = h.bills.filter((x) => !isDemo(x));
+    if (had && h.name === 'Pratama' && !h.members.length) h.name = '';
+    return had;
+  }
+
+  /* ---------- bantuan ---------- */
+
+  function hh() { return state.household; }
+  function getMember(id) { return hh().members.find((m) => m.id === id) || null; }
+  function memberShortName(member) { return member ? (member.nickname || member.name.split(/\s+/)[0]) : 'Keluarga'; }
+  function docTypeLabel(doc) { return doc.label || (DOC_TYPES[doc.type] || DOC_TYPES.lainnya).label; }
+  function docsForMember(memberId) { return hh().documents.filter((d) => d.memberId === memberId); }
+  function monthKey(iso = todayISO()) { return iso.slice(0, 7); }
+
+  function maskNumber(value) {
+    const s = String(value || '');
+    const visible = s.replace(/[^0-9A-Za-z]/g, '');
+    if (visible.length <= 4) return '••••';
+    return `•••• ${visible.slice(-4)}`;
+  }
+
+  function groupDigits(value) {
+    const s = String(value || '');
+    if (/^\d{12,}$/.test(s)) return s.replace(/(\d{4})(?=\d)/g, '$1 ');
+    return s;
+  }
+
+  function daysBetween(fromISO, toISO) {
+    const a = parseISO(fromISO);
+    const b = parseISO(toISO);
+    if (!a || !b) return null;
+    return Math.round((b - a) / 86400000);
+  }
+
+  function telHref(phone) {
+    const clean = String(phone || '').replace(/[^\d+]/g, '');
+    return clean ? `tel:${clean}` : '';
+  }
+
+  function waHref(phone) {
+    let digits = String(phone || '').replace(/\D/g, '');
+    if (!digits) return '';
+    if (digits.startsWith('0')) digits = `62${digits.slice(1)}`;
+    if (!digits.startsWith('62') || digits.length < 10) return '';
+    if (/^62(21|22|24|31|61|274)/.test(digits) && digits.length < 12) return '';
+    return `https://wa.me/${digits}`;
+  }
+
+  function formatRupiah(value) {
+    if (value == null) return '';
+    return `Rp${new Intl.NumberFormat('id-ID').format(value)}`;
+  }
+
+  function nextBirthday(birthISO) {
+    if (!birthISO) return null;
+    const today = todayISO();
+    const year = Number(today.slice(0, 4));
+    let candidate = `${year}${birthISO.slice(4)}`;
+    if (birthISO.slice(5) === '02-29' && !isValidISODate(candidate)) candidate = `${year}-02-28`;
+    if (candidate < today) {
+      candidate = `${year + 1}${birthISO.slice(4)}`;
+      if (birthISO.slice(5) === '02-29' && !isValidISODate(candidate)) candidate = `${year + 1}-02-28`;
+    }
+    return { date: candidate, days: daysBetween(today, candidate), age: ageOn(birthISO, candidate).years };
+  }
+
+  function docExpiryStatus(doc) {
+    if (!doc.expiresAt) return null;
+    const days = daysBetween(todayISO(), doc.expiresAt);
+    if (days == null) return null;
+    if (days < 0) return { tone: 'coral', label: `Habis ${formatDate(doc.expiresAt)}`, days, urgent: true };
+    if (days <= 90) return { tone: 'gold', label: `Berlaku s.d. ${formatDate(doc.expiresAt)} · ${days} hari lagi`, days, urgent: true };
+    return { tone: '', label: `Berlaku s.d. ${formatDate(doc.expiresAt)}`, days, urgent: false };
+  }
+
+  function billDueInfo(bill) {
+    if (!bill.dueDay) return null;
+    const today = todayISO();
+    const paid = bill.paidMonths.includes(monthKey(today));
+    const y = Number(today.slice(0, 4));
+    const m = Number(today.slice(5, 7));
+    const dueThisMonth = (() => {
+      const last = new Date(y, m, 0).getDate();
+      const d = Math.min(bill.dueDay, last);
+      return `${today.slice(0, 7)}-${String(d).padStart(2, '0')}`;
+    })();
+    const days = daysBetween(today, dueThisMonth);
+    return { dueDate: dueThisMonth, days, paid };
+  }
+
+  function attentionItems() {
+    const items = [];
+    hh().documents.forEach((doc) => {
+      const st = docExpiryStatus(doc);
+      if (st && st.urgent) {
+        const member = getMember(doc.memberId);
+        items.push({
+          sort: st.days,
+          tone: st.tone,
+          icon: 'id-card',
+          title: `${docTypeLabel(doc)} ${member ? memberShortName(member) : 'keluarga'}`,
+          sub: st.days < 0 ? `Sudah habis masa berlakunya (${formatDate(doc.expiresAt)})` : `Habis dalam ${st.days} hari · ${formatDate(doc.expiresAt)}`,
+          action: 'viewDocument',
+          id: doc.id
+        });
+      }
+    });
+    hh().bills.forEach((bill) => {
+      const due = billDueInfo(bill);
+      if (!due || due.paid || bill.autopay) return;
+      if (due.days >= -10 && due.days <= 7) {
+        items.push({
+          sort: due.days,
+          tone: due.days < 0 ? 'coral' : 'gold',
+          icon: 'receipt',
+          title: bill.name,
+          sub: due.days < 0 ? `Lewat jatuh tempo ${-due.days} hari${bill.amount ? ` · ${formatRupiah(bill.amount)}` : ''}` : (due.days === 0 ? `Jatuh tempo hari ini${bill.amount ? ` · ${formatRupiah(bill.amount)}` : ''}` : `Jatuh tempo ${due.days} hari lagi${bill.amount ? ` · ${formatRupiah(bill.amount)}` : ''}`),
+          action: 'viewBill',
+          id: bill.id
+        });
+      }
+    });
+    hh().members.forEach((member) => {
+      const b = nextBirthday(member.birthDate);
+      if (b && b.days <= 30) {
+        items.push({
+          sort: b.days + 0.5,
+          tone: 'lilac',
+          icon: 'gift',
+          title: `Ulang tahun ${memberShortName(member)} ke-${b.age}`,
+          sub: b.days === 0 ? 'Hari ini! 🎉' : `${b.days} hari lagi · ${formatDate(b.date, { year: undefined, month: 'long' })}`,
+          action: 'viewMember',
+          id: member.id
+        });
+      }
+    });
+    return items.sort((a, b) => a.sort - b.sort);
+  }
+
+  function memberAvatar(member, size = '') {
+    return `<span class="avatar ${size}" style="background:${esc(member.color)}">${esc(initials(member.name))}</span>`;
+  }
+
+  function revealButton(id, revealed) {
+    return `<button class="icon-btn sm" type="button" data-action="toggleReveal" data-id="${esc(id)}" aria-label="${revealed ? 'Sembunyikan' : 'Tampilkan'} nomor">${ic(revealed ? 'eye-off' : 'eye')}</button>`;
+  }
+
+  function copyButton(value, label) {
+    return `<button class="icon-btn sm" type="button" data-action="copyText" data-value="${esc(value)}" data-label="${esc(label)}" aria-label="Salin ${esc(label)}">${ic('copy')}</button>`;
+  }
+
+  function numberLine(id, value, label) {
+    const revealed = ui.revealAll || ui.revealed.has(id);
+    return `
+      <div class="secret-line">
+        <code class="secret-value${revealed ? '' : ' is-masked'}">${esc(revealed ? groupDigits(value) : maskNumber(value))}</code>
+        <span class="secret-actions">${revealButton(id, revealed)}${copyButton(value, label)}</span>
+      </div>`;
+  }
+
+  function familyEmpty({ icon, title, text, action, actionLabel }) {
+    return `<div class="card empty-inline fam-empty">
+      <span class="empty-icon">${ic(icon)}</span>
+      <strong>${title}</strong>
+      <p>${text}</p>
+      ${action ? `<button class="btn btn-soft btn-sm" type="button" data-action="${action}" style="margin-top:12px">${ic('plus')} ${actionLabel}</button>` : ''}
+    </div>`;
+  }
+
+  /* ---------- pencarian global ---------- */
+
+  function searchHousehold(query) {
+    const q = query.trim().toLowerCase();
+    if (q.length < 2) return null;
+    const has = (...parts) => parts.join(' ').toLowerCase().includes(q);
+    const h = hh();
+    return {
+      members: h.members.filter((m) => has(m.name, m.nickname, m.relation, m.phone, m.bloodType, m.allergies, m.occupation, m.notes)),
+      documents: h.documents.filter((d) => {
+        const member = getMember(d.memberId);
+        return has(docTypeLabel(d), DOC_TYPES[d.type].short, d.number, d.issuer, d.storedAt, d.note, member ? `${member.name} ${member.nickname}` : 'keluarga');
+      }),
+      contacts: h.contacts.filter((c) => has(c.name, c.role, CONTACT_CATS[c.category].label, c.phone, c.phone2, c.address, c.note)),
+      bills: h.bills.filter((b) => has(b.name, BILL_CATS[b.category].label, b.customerNumber, b.accountName, b.payMethod, b.note))
+    };
+  }
+
+  function homeResultsHTML() {
+    const r = searchHousehold(ui.homeQuery);
+    if (!r) return '';
+    const total = r.members.length + r.documents.length + r.contacts.length + r.bills.length;
+    if (!total) {
+      return `<div class="card search-results"><p class="search-none">${ic('search')} Tidak ada yang cocok dengan “${esc(ui.homeQuery.trim())}”.</p></div>`;
+    }
+    const section = (title, rows) => rows.length ? `<div class="search-group"><p class="search-group-title">${title}</p>${rows.join('')}</div>` : '';
+    return `<div class="card search-results">
+      ${section('Anggota', r.members.map((m) => `
+        <button class="search-row" type="button" data-action="viewMember" data-id="${esc(m.id)}">
+          ${memberAvatar(m, 'avatar-sm')}<span><strong>${esc(m.name)}</strong><small>${esc(m.relation)}${m.bloodType ? ` · Gol. darah ${esc(m.bloodType)}` : ''}${m.phone ? ` · ${esc(m.phone)}` : ''}</small></span>${ic('chevron-right')}
+        </button>`))}
+      ${section('Dokumen', r.documents.map((d) => {
+        const member = getMember(d.memberId);
+        return `<button class="search-row" type="button" data-action="viewDocument" data-id="${esc(d.id)}">
+          <span class="row-icon">${ic('id-card')}</span><span><strong>${esc(docTypeLabel(d))} · ${esc(member ? memberShortName(member) : 'Keluarga')}</strong><small>${esc(maskNumber(d.number))} · ketuk untuk melihat</small></span>${ic('chevron-right')}
+        </button>`;
+      }))}
+      ${section('Kontak', r.contacts.map((c) => `
+        <div class="search-row is-static">
+          <span class="row-icon">${ic('phone')}</span><span><strong>${esc(c.name)}</strong><small>${esc(c.role || CONTACT_CATS[c.category].label)}${c.phone ? ` · ${esc(c.phone)}` : ''}</small></span>
+          ${c.phone ? `<a class="icon-btn sm bordered" href="${esc(telHref(c.phone))}" aria-label="Telepon ${esc(c.name)}">${ic('phone')}</a>` : ''}
+        </div>`))}
+      ${section('Tagihan', r.bills.map((b) => `
+        <button class="search-row" type="button" data-action="viewBill" data-id="${esc(b.id)}">
+          <span class="row-icon">${ic('receipt')}</span><span><strong>${esc(b.name)}</strong><small>${b.customerNumber ? `No. pelanggan ${esc(b.customerNumber)}` : esc(BILL_CATS[b.category].label)}</small></span>${ic('chevron-right')}
+        </button>`))}
+    </div>`;
+  }
+
+  /* ---------- halaman: Beranda keluarga ---------- */
+
+  function renderHome() {
+    const h = hh();
+    const familyName = h.name ? `Keluarga ${h.name}` : 'Rumah keluarga';
+    const attention = attentionItems();
+    const emergency = h.contacts.filter((c) => c.pinned || c.category === 'darurat').slice(0, 4);
+    const empty = !h.members.length && !h.documents.length && !h.contacts.length && !h.bills.length;
+    const hour = new Date().getHours();
+    const greet = hour < 11 ? 'Selamat pagi' : hour < 15 ? 'Selamat siang' : hour < 18 ? 'Selamat sore' : 'Selamat malam';
+
+    const tiles = [
+      { view: 'members', icon: 'users', label: 'Anggota', count: h.members.length, unit: 'orang', tint: 'var(--forest-soft)', color: 'var(--forest)' },
+      { view: 'documents', icon: 'id-card', label: 'Dokumen', count: h.documents.length, unit: 'nomor', tint: 'var(--blue-soft)', color: '#38677e' },
+      { view: 'contacts', icon: 'phone', label: 'Kontak', count: h.contacts.length, unit: 'kontak', tint: 'var(--coral-soft)', color: 'var(--coral-deep)' },
+      { view: 'bills', icon: 'receipt', label: 'Tagihan', count: h.bills.length, unit: 'rutin', tint: 'var(--gold-soft)', color: '#926915' }
+    ];
+
+    const children = state.children;
+    const tumbuhCard = `
+      <section class="card card-pad tumbuh-hub">
+        <div class="card-head">
+          <div>
+            <p class="hub-kicker">${ic('sprout')} Hub</p>
+            <h2 class="card-title">Tumbuh kembang anak</h2>
+            <p class="card-sub">Pertumbuhan, milestone, imunisasi, dan jurnal.</p>
+          </div>
+          <button class="btn btn-soft btn-sm" type="button" data-action="goView" data-view="dashboard">Buka ${ic('arrow-right')}</button>
+        </div>
+        ${children.length ? `<div class="hub-children">${children.map((child) => {
+          const next = nextVaccine(child);
+          return `<button class="hub-child" type="button" data-action="openTumbuh" data-id="${esc(child.id)}">
+            ${avatarHTML(child, 'avatar-sm')}
+            <span><strong>${esc(child.name)}</strong><small>${esc(formatAge(child.birthDate))}${next ? ` · Imunisasi berikut: ${esc(next.name)}` : ' · Imunisasi dasar lengkap'}</small></span>
+            ${ic('chevron-right')}
+          </button>`;
+        }).join('')}</div>` : `<p class="hub-empty">Belum ada profil anak. <button class="text-link" type="button" data-action="goView" data-view="dashboard">Mulai di Tumbuh ${ic('arrow-right')}</button></p>`}
+      </section>`;
+
+    return `
+      <div class="view-head home-head">
+        <div>
+          <p class="eyebrow">${esc(greet)}</p>
+          <h1>${esc(familyName)}.</h1>
+          <p class="view-sub">Data penting keluarga, siap dibuka kapan saja — bahkan tanpa internet.</p>
+        </div>
+        <div class="view-actions">
+          <button class="btn btn-ghost" type="button" data-action="editHousehold">${ic('edit')} Nama keluarga</button>
+          ${empty ? `<button class="btn btn-primary" type="button" data-action="addMember">${ic('plus')} Tambah anggota</button>` : ''}
+        </div>
+      </div>
+
+      <div class="home-search">
+        <label class="home-search-box">
+          ${ic('search')}
+          <input type="search" id="homeSearch" placeholder="Cari NIK, BPJS, dokter, PLN…" value="${esc(ui.homeQuery)}" autocomplete="off" aria-label="Cari data keluarga" />
+        </label>
+        <div id="homeResults">${homeResultsHTML()}</div>
+      </div>
+
+      ${empty ? `
+        <section class="card card-pad home-start">
+          <h2 class="card-title">Mulai isi rumah keluarga</h2>
+          <p class="card-sub">Urutan yang disarankan: anggota dulu, lalu dokumen milik masing-masing, kontak penting, dan tagihan rutin.</p>
+          <div class="start-steps">
+            <button type="button" class="start-step" data-action="addMember"><span>1</span><strong>Anggota keluarga</strong><small>Nama, tanggal lahir, golongan darah, alergi</small></button>
+            <button type="button" class="start-step" data-action="addDocument"><span>2</span><strong>Nomor dokumen</strong><small>KK, NIK, BPJS, paspor, SIM</small></button>
+            <button type="button" class="start-step" data-action="addContact"><span>3</span><strong>Kontak penting</strong><small>Darurat, dokter, sekolah</small></button>
+            <button type="button" class="start-step" data-action="addBill"><span>4</span><strong>Tagihan rutin</strong><small>PLN, PDAM, internet, iuran</small></button>
+          </div>
+          <button class="text-link" type="button" data-action="loadDemo" style="margin-top:14px">${ic('sparkles')} Atau lihat dulu dengan data contoh ${ic('arrow-right')}</button>
+        </section>` : ''}
+
+      <div class="home-tiles">
+        ${tiles.map((t) => `
+          <button class="card home-tile" type="button" data-action="goView" data-view="${t.view}">
+            <span class="feature-icon" style="--tint:${t.tint};--color:${t.color}">${ic(t.icon)}</span>
+            <span class="home-tile-copy"><strong>${t.count}</strong><small>${t.label}</small></span>
+            ${ic('chevron-right', 'home-tile-arrow')}
+          </button>`).join('')}
+      </div>
+
+      <div class="home-grid">
+        <section class="card card-pad">
+          <div class="card-head">
+            <div>
+              <h2 class="card-title">Perlu perhatian</h2>
+              <p class="card-sub">Dokumen yang hampir habis, tagihan dekat jatuh tempo, dan ulang tahun.</p>
+            </div>
+            ${attention.length ? `<span class="pill coral">${attention.length}</span>` : ''}
+          </div>
+          ${attention.length ? `<div class="attn-list">${attention.slice(0, 8).map((a) => `
+            <button class="attn-item" type="button" data-action="${a.action}" data-id="${esc(a.id)}">
+              <span class="attn-icon tone-${a.tone}">${ic(a.icon)}</span>
+              <span><strong>${esc(a.title)}</strong><small>${esc(a.sub)}</small></span>
+              ${ic('chevron-right')}
+            </button>`).join('')}</div>` : `<div class="attn-calm">${ic('check')} Semua aman untuk 30 hari ke depan.</div>`}
+        </section>
+
+        <section class="card card-pad">
+          <div class="card-head">
+            <div>
+              <h2 class="card-title">Kontak darurat</h2>
+              <p class="card-sub">Sekali ketuk untuk menelepon.</p>
+            </div>
+            <button class="text-link" type="button" data-action="goView" data-view="contacts">Semua ${ic('arrow-right')}</button>
+          </div>
+          ${emergency.length ? `<div class="quick-contacts">${emergency.map((c) => `
+            <div class="quick-contact">
+              <span class="row-icon tone-${CONTACT_CATS[c.category].pill}">${ic(CONTACT_CATS[c.category].icon)}</span>
+              <span class="quick-contact-copy"><strong>${esc(c.name)}</strong><small>${esc(c.role || CONTACT_CATS[c.category].label)}</small></span>
+              ${c.phone ? `<a class="btn btn-primary btn-sm" href="${esc(telHref(c.phone))}">${ic('phone')} Telepon</a>` : ''}
+            </div>`).join('')}</div>` : `<p class="hub-empty">Tandai kontak sebagai <strong>penting</strong> agar muncul di sini. <button class="text-link" type="button" data-action="addContact">Tambah kontak ${ic('arrow-right')}</button></p>`}
+        </section>
+      </div>
+
+      ${h.members.length ? `
+        <section class="card card-pad section-gap">
+          <div class="card-head">
+            <div><h2 class="card-title">Anggota keluarga</h2><p class="card-sub">Ketuk untuk melihat data lengkap dan dokumennya.</p></div>
+            <button class="text-link" type="button" data-action="goView" data-view="members">Kelola ${ic('arrow-right')}</button>
+          </div>
+          <div class="member-strip">${h.members.map((m) => `
+            <button class="member-chip" type="button" data-action="viewMember" data-id="${esc(m.id)}">
+              ${memberAvatar(m)}
+              <strong>${esc(memberShortName(m))}</strong>
+              <small>${esc(m.relation)}${m.bloodType ? ` · ${esc(m.bloodType)}` : ''}</small>
+              ${m.allergies ? `<span class="pill coral mini">${ic('alert')} Alergi</span>` : ''}
+            </button>`).join('')}</div>
+        </section>` : ''}
+
+      <div class="section-gap">${tumbuhCard}</div>`;
+  }
+
+  /* ---------- halaman: Anggota ---------- */
+
+  function renderMembers() {
+    const members = hh().members;
+    return `
+      <div class="view-head">
+        <div>
+          <p class="eyebrow">Anggota keluarga</p>
+          <h1>Siapa saja di rumah ini.</h1>
+          <p class="view-sub">Data dasar tiap anggota: kelahiran, golongan darah, alergi, dan catatan kesehatan yang perlu diketahui saat darurat.</p>
+        </div>
+        <div class="view-actions">
+          <button class="btn btn-primary" type="button" data-action="addMember">${ic('plus')} Tambah anggota</button>
+        </div>
+      </div>
+      ${members.length ? `<div class="member-grid">${members.map((m) => {
+        const docs = docsForMember(m.id);
+        const bday = nextBirthday(m.birthDate);
+        return `
+          <article class="card member-card">
+            <div class="member-card-top">
+              ${memberAvatar(m, 'avatar-lg')}
+              <div class="member-card-name">
+                <h3>${esc(m.name)}</h3>
+                <p>${esc(m.relation)}${m.birthDate ? ` · ${esc(formatAge(m.birthDate))}` : ''}</p>
+              </div>
+              <span class="entry-actions">
+                <button class="icon-btn sm" type="button" data-action="editMember" data-id="${esc(m.id)}" aria-label="Ubah ${esc(m.name)}">${ic('edit')}</button>
+                <button class="icon-btn sm danger" type="button" data-action="deleteMember" data-id="${esc(m.id)}" aria-label="Hapus ${esc(m.name)}">${ic('trash')}</button>
+              </span>
+            </div>
+            <dl class="fact-list">
+              ${m.birthDate ? `<div><dt>Lahir</dt><dd>${esc(m.birthPlace ? `${m.birthPlace}, ` : '')}${esc(formatDateLong(m.birthDate))}</dd></div>` : ''}
+              <div><dt>Gol. darah</dt><dd>${m.bloodType ? `<span class="blood">${esc(m.bloodType)}</span>` : '<span class="muted">Belum diisi</span>'}</dd></div>
+              ${m.allergies ? `<div class="is-alert"><dt>Alergi</dt><dd>${esc(m.allergies)}</dd></div>` : ''}
+              ${m.phone ? `<div><dt>Telepon</dt><dd><a href="${esc(telHref(m.phone))}">${esc(m.phone)}</a></dd></div>` : ''}
+            </dl>
+            <div class="member-card-foot">
+              <span class="pill">${ic('id-card')} ${docs.length} dokumen</span>
+              ${bday && bday.days <= 30 ? `<span class="pill lilac">${ic('gift')} ${bday.days === 0 ? 'Ulang tahun hari ini' : `Ultah ${bday.days} hari lagi`}</span>` : ''}
+              <button class="text-link" type="button" data-action="viewMember" data-id="${esc(m.id)}">Detail ${ic('arrow-right')}</button>
+            </div>
+          </article>`;
+      }).join('')}</div>` : familyEmpty({ icon: 'users', title: 'Belum ada anggota', text: 'Mulai dari diri sendiri dan pasangan, lalu anak-anak dan orang tua.', action: 'addMember', actionLabel: 'Tambah anggota' })}`;
+  }
+
+  function openMemberDetail(memberId) {
+    const m = getMember(memberId);
+    if (!m) return;
+    const docs = docsForMember(m.id);
+    const child = m.childId ? getChild(m.childId) : null;
+    const row = (label, value, cls = '') => value ? `<div class="${cls}"><dt>${label}</dt><dd>${value}</dd></div>` : '';
+    openModal({
+      kicker: m.relation,
+      title: m.name,
+      subtitle: m.birthDate ? esc(`${formatAge(m.birthDate)} · lahir ${m.birthPlace ? `${m.birthPlace}, ` : ''}${formatDateLong(m.birthDate)}`) : '',
+      size: 'modal-lg',
+      body: `
+        <dl class="fact-list detail">
+          ${row('Panggilan', esc(m.nickname))}
+          ${row('Jenis kelamin', m.sex ? (m.sex === 'L' ? 'Laki-laki' : 'Perempuan') : '')}
+          ${row('Gol. darah', m.bloodType ? `<span class="blood">${esc(m.bloodType)}</span>` : '')}
+          ${row('Alergi', esc(m.allergies), 'is-alert')}
+          ${row('Kesehatan', esc(m.medical))}
+          ${row('Telepon', m.phone ? `<a href="${esc(telHref(m.phone))}">${esc(m.phone)}</a>` : '')}
+          ${row('Email', m.email ? `<a href="mailto:${esc(m.email)}">${esc(m.email)}</a>` : '')}
+          ${row('Pekerjaan / sekolah', esc(m.occupation))}
+          ${row('Catatan', esc(m.notes))}
+        </dl>
+        <div class="detail-section">
+          <div class="detail-section-head"><h3>Dokumen</h3><button class="text-link" type="button" data-action="addDocument" data-member="${esc(m.id)}">${ic('plus')} Tambah</button></div>
+          ${docs.length ? docs.map((d) => {
+            const st = docExpiryStatus(d);
+            return `<div class="doc-row">
+              <div class="doc-row-head"><span class="pill ${DOC_TYPES[d.type].pill}">${esc(DOC_TYPES[d.type].short)}</span><strong>${esc(docTypeLabel(d))}</strong>${st ? `<small class="tone-text-${st.tone}">${esc(st.label)}</small>` : ''}</div>
+              ${numberLine(d.id, d.number, docTypeLabel(d))}
+            </div>`;
+          }).join('') : '<p class="muted small">Belum ada dokumen untuk anggota ini.</p>'}
+        </div>
+        ${child ? `<button class="btn btn-soft btn-block" type="button" data-action="openTumbuh" data-id="${esc(child.id)}" style="margin-top:14px">${ic('sprout')} Buka catatan tumbuh kembang ${esc(child.name.split(/\s+/)[0])}</button>` : ''}`,
+      footer: `
+        <button class="btn btn-ghost" type="button" data-action="closeModal">Tutup</button>
+        <button class="btn btn-primary" type="button" data-action="editMember" data-id="${esc(m.id)}">${ic('edit')} Ubah data</button>`
+    });
+  }
+
+  function openMemberModal(memberId = null) {
+    const m = memberId ? getMember(memberId) : null;
+    const v = (key) => (m ? esc(m[key] || '') : '');
+    const relation = m ? m.relation : (hh().members.length ? 'Anak' : 'Saya');
+    const color = m ? m.color : COLORS[hh().members.length % COLORS.length];
+    const linkedChildIds = new Set(hh().members.filter((x) => x.childId && (!m || x.id !== m.id)).map((x) => x.childId));
+    const childOptions = state.children.filter((c) => !linkedChildIds.has(c.id));
+    openModal({
+      kicker: m ? 'Anggota keluarga' : 'Anggota baru',
+      title: m ? `Ubah data ${memberShortName(m)}` : 'Tambah anggota keluarga',
+      subtitle: 'Hanya nama yang wajib. Isi sisanya kapan saja.',
+      size: 'modal-lg',
+      body: `
+        <form id="memberForm" novalidate autocomplete="off">
+          <input type="hidden" name="id" value="${m ? esc(m.id) : ''}" />
+          <div class="form-grid">
+            <div class="form-field full">
+              <label for="mName">Nama lengkap <span>wajib</span></label>
+              <input class="input" id="mName" name="name" maxlength="80" value="${v('name')}" placeholder="Sesuai KTP / akta" />
+            </div>
+            <div class="form-field">
+              <label for="mNick">Nama panggilan</label>
+              <input class="input" id="mNick" name="nickname" maxlength="30" value="${v('nickname')}" />
+            </div>
+            <div class="form-field">
+              <label for="mRel">Hubungan</label>
+              <select class="select" id="mRel" name="relation">${RELATIONS.map((r) => `<option ${r === relation ? 'selected' : ''}>${r}</option>`).join('')}</select>
+            </div>
+            <div class="form-field">
+              <label for="mSex">Jenis kelamin</label>
+              <select class="select" id="mSex" name="sex">
+                <option value="" ${!m || !m.sex ? 'selected' : ''}>—</option>
+                <option value="L" ${m && m.sex === 'L' ? 'selected' : ''}>Laki-laki</option>
+                <option value="P" ${m && m.sex === 'P' ? 'selected' : ''}>Perempuan</option>
+              </select>
+            </div>
+            <div class="form-field">
+              <label for="mBlood">Golongan darah</label>
+              <select class="select" id="mBlood" name="bloodType">${BLOOD_TYPES.map((b) => `<option value="${b}" ${m && m.bloodType === b ? 'selected' : ''}>${b || '—'}</option>`).join('')}</select>
+            </div>
+            <div class="form-field">
+              <label for="mPlace">Tempat lahir</label>
+              <input class="input" id="mPlace" name="birthPlace" maxlength="60" value="${v('birthPlace')}" />
+            </div>
+            <div class="form-field">
+              <label for="mBirth">Tanggal lahir</label>
+              <input class="input" id="mBirth" name="birthDate" type="date" max="${todayISO()}" value="${v('birthDate')}" />
+            </div>
+            <div class="form-field full">
+              <label for="mAllergy">Alergi <span>penting saat darurat</span></label>
+              <input class="input" id="mAllergy" name="allergies" maxlength="300" value="${v('allergies')}" placeholder="Misal: penisilin, udang, debu" />
+            </div>
+            <div class="form-field full">
+              <label for="mMedical">Kondisi kesehatan / obat rutin</label>
+              <textarea class="textarea" id="mMedical" name="medical" maxlength="600">${v('medical')}</textarea>
+            </div>
+            <div class="form-field">
+              <label for="mPhone">Telepon</label>
+              <input class="input" id="mPhone" name="phone" type="tel" inputmode="tel" maxlength="30" value="${v('phone')}" />
+            </div>
+            <div class="form-field">
+              <label for="mEmail">Email</label>
+              <input class="input" id="mEmail" name="email" type="email" maxlength="100" value="${v('email')}" />
+            </div>
+            <div class="form-field full">
+              <label for="mJob">Pekerjaan / sekolah</label>
+              <input class="input" id="mJob" name="occupation" maxlength="100" value="${v('occupation')}" />
+            </div>
+            ${state.children.length ? `
+            <div class="form-field full">
+              <label for="mChild">Hubungkan ke profil Tumbuh <span>untuk anak</span></label>
+              <select class="select" id="mChild" name="childId">
+                <option value="">Tidak dihubungkan</option>
+                ${childOptions.map((c) => `<option value="${esc(c.id)}" ${m && m.childId === c.id ? 'selected' : ''}>${esc(c.name)}</option>`).join('')}
+              </select>
+            </div>` : ''}
+            <div class="form-field full">
+              <label for="mNotes">Catatan lain</label>
+              <textarea class="textarea" id="mNotes" name="notes" maxlength="1000">${v('notes')}</textarea>
+            </div>
+            <div class="form-field full">
+              <span class="field-label">Warna</span>
+              <div class="color-options">
+                ${COLORS.map((c, i) => `<label class="color-option" aria-label="Warna ${i + 1}"><input type="radio" name="color" value="${c}" ${color === c ? 'checked' : ''} /><span style="--swatch:${c}"></span></label>`).join('')}
+              </div>
+            </div>
+          </div>
+        </form>`,
+      footer: `
+        <button class="btn btn-ghost" type="button" data-action="closeModal">Batal</button>
+        <button class="btn btn-primary" type="submit" form="memberForm">${m ? 'Simpan perubahan' : 'Tambah anggota'}</button>`
+    });
+  }
+
+  function handleMemberSubmit(form) {
+    clearFormErrors(form);
+    const data = new FormData(form);
+    const name = cleanText(data.get('name'), 80);
+    const birthDate = String(data.get('birthDate') || '');
+    let valid = true;
+    if (name.length < 2) { showFieldError(form, 'name', 'Nama minimal 2 karakter.'); valid = false; }
+    if (birthDate && (!isValidISODate(birthDate) || birthDate > todayISO())) { showFieldError(form, 'birthDate', 'Tanggal lahir belum tepat.'); valid = false; }
+    if (!valid) return;
+    const id = String(data.get('id') || '');
+    const fields = {
+      name,
+      nickname: data.get('nickname'),
+      relation: data.get('relation'),
+      sex: data.get('sex'),
+      birthPlace: data.get('birthPlace'),
+      birthDate,
+      bloodType: data.get('bloodType'),
+      allergies: data.get('allergies'),
+      medical: data.get('medical'),
+      phone: data.get('phone'),
+      email: data.get('email'),
+      occupation: data.get('occupation'),
+      notes: data.get('notes'),
+      childId: data.get('childId') || '',
+      color: data.get('color')
+    };
+    const existing = id ? getMember(id) : null;
+    const merged = normalizeHousehold({ members: [{ ...(existing || {}), ...fields, id: id || uid(), createdAt: existing ? existing.createdAt : undefined }] }).members[0];
+    if (existing) Object.assign(existing, merged);
+    else hh().members.push(merged);
+    saveState();
+    closeModal();
+    renderApp({ preserveScroll: true });
+    toast(existing ? 'Data anggota diperbarui.' : `${memberShortName(merged)} ditambahkan.`);
+  }
+
+  async function deleteMember(memberId) {
+    const m = getMember(memberId);
+    if (!m) return;
+    const docs = docsForMember(m.id).length;
+    const ok = await askConfirm({
+      title: `Hapus ${esc(m.name)}?`,
+      message: `Data anggota ini akan dihapus.${docs ? ` <strong>${docs} dokumen</strong> miliknya tetap disimpan dan dipindah ke “Keluarga”.` : ''} Catatan Tumbuh tidak ikut terhapus.`,
+      confirmText: 'Hapus anggota',
+      danger: true
+    });
+    if (!ok) return;
+    hh().documents.forEach((d) => { if (d.memberId === m.id) d.memberId = ''; });
+    hh().members = hh().members.filter((x) => x.id !== m.id);
+    saveState();
+    renderApp({ preserveScroll: true });
+    toast('Anggota dihapus.');
+  }
+
+  /* ---------- halaman: Dokumen ---------- */
+
+  function renderDocuments() {
+    const h = hh();
+    const owners = [...h.members.map((m) => ({ id: m.id, member: m })), { id: '', member: null }];
+    const filter = ui.docFilter;
+    const groups = owners
+      .map((o) => ({ ...o, docs: h.documents.filter((d) => d.memberId === o.id && (filter === 'all' || d.type === filter)) }))
+      .filter((g) => g.docs.length);
+    const usedTypes = Object.keys(DOC_TYPES).filter((t) => h.documents.some((d) => d.type === t));
+    return `
+      <div class="view-head">
+        <div>
+          <p class="eyebrow">Dokumen penting</p>
+          <h1>Nomor-nomor yang sering diminta.</h1>
+          <p class="view-sub">Nomor disembunyikan sampai diketuk ${ic('eye', 'inline-ic')}. Tombol salin ${ic('copy', 'inline-ic')} langsung menyalin nomor lengkap untuk ditempel di formulir.</p>
+        </div>
+        <div class="view-actions">
+          <button class="btn btn-ghost" type="button" data-action="toggleRevealAll">${ic(ui.revealAll ? 'eye-off' : 'eye')} ${ui.revealAll ? 'Sembunyikan semua' : 'Tampilkan semua'}</button>
+          <button class="btn btn-primary" type="button" data-action="addDocument">${ic('plus')} Tambah dokumen</button>
+        </div>
+      </div>
+      ${h.documents.length ? `
+        <div class="filter-chips fam-filters" role="group" aria-label="Filter jenis dokumen">
+          <button type="button" class="filter-chip ${filter === 'all' ? 'active' : ''}" data-action="setDocFilter" data-filter="all">Semua</button>
+          ${usedTypes.map((t) => `<button type="button" class="filter-chip ${filter === t ? 'active' : ''}" data-action="setDocFilter" data-filter="${t}">${esc(DOC_TYPES[t].short)}</button>`).join('')}
+        </div>
+        ${groups.map((g) => `
+          <section class="doc-group">
+            <div class="doc-group-head">
+              ${g.member ? memberAvatar(g.member, 'avatar-sm') : `<span class="avatar avatar-sm" style="background:var(--forest)">${ic('home')}</span>`}
+              <h2>${esc(g.member ? g.member.name : 'Dokumen keluarga')}</h2>
+              <small>${g.docs.length} dokumen</small>
+            </div>
+            <div class="doc-grid">${g.docs.map((d) => docCardHTML(d)).join('')}</div>
+          </section>`).join('') || familyEmpty({ icon: 'search', title: 'Tidak ada dokumen jenis ini', text: 'Pilih filter lain.' })}
+      ` : familyEmpty({ icon: 'id-card', title: 'Belum ada dokumen', text: 'Mulai dari Kartu Keluarga, lalu NIK dan BPJS tiap anggota.', action: 'addDocument', actionLabel: 'Tambah dokumen' })}`;
+  }
+
+  function docCardHTML(d) {
+    const type = DOC_TYPES[d.type];
+    const st = docExpiryStatus(d);
+    return `
+      <article class="card doc-card" id="doc-${esc(d.id)}">
+        <div class="doc-card-top">
+          <span class="pill ${type.pill}">${esc(type.short)}</span>
+          <strong>${esc(docTypeLabel(d))}</strong>
+          <span class="entry-actions">
+            <button class="icon-btn sm" type="button" data-action="editDocument" data-id="${esc(d.id)}" aria-label="Ubah dokumen">${ic('edit')}</button>
+            <button class="icon-btn sm danger" type="button" data-action="deleteDocument" data-id="${esc(d.id)}" aria-label="Hapus dokumen">${ic('trash')}</button>
+          </span>
+        </div>
+        ${numberLine(d.id, d.number, docTypeLabel(d))}
+        ${(d.issuer || d.issuedAt || st || d.storedAt) ? `<div class="doc-meta">
+          ${d.issuer ? `<span>${esc(d.issuer)}</span>` : ''}
+          ${d.issuedAt ? `<span>Terbit ${esc(formatDate(d.issuedAt))}</span>` : ''}
+          ${st ? `<span class="tone-text-${st.tone}">${esc(st.label)}</span>` : ''}
+          ${d.storedAt ? `<span>${ic('lock', 'inline-ic')} Disimpan: ${esc(d.storedAt)}</span>` : ''}
+        </div>` : ''}
+        ${d.note ? `<p class="doc-note">${esc(d.note)}</p>` : ''}
+      </article>`;
+  }
+
+  function openDocumentView(docId) {
+    const d = hh().documents.find((x) => x.id === docId);
+    if (!d) return;
+    const member = getMember(d.memberId);
+    openModal({
+      kicker: member ? member.name : 'Dokumen keluarga',
+      title: docTypeLabel(d),
+      body: docCardHTML(d).replace('class="card doc-card"', 'class="doc-card in-modal"'),
+      footer: `<button class="btn btn-ghost" type="button" data-action="closeModal">Tutup</button>
+        <button class="btn btn-primary" type="button" data-action="editDocument" data-id="${esc(d.id)}">${ic('edit')} Ubah</button>`
+    });
+  }
+
+  function openDocumentModal(docId = null, presetMember = '') {
+    const d = docId ? hh().documents.find((x) => x.id === docId) : null;
+    const v = (key) => (d ? esc(d[key] || '') : '');
+    const memberId = d ? d.memberId : presetMember;
+    openModal({
+      kicker: 'Dokumen penting',
+      title: d ? 'Ubah dokumen' : 'Tambah dokumen',
+      subtitle: 'Yang disimpan hanya teks (nomor & keterangan), bukan foto dokumen.',
+      size: 'modal-lg',
+      body: `
+        <form id="documentForm" novalidate autocomplete="off">
+          <input type="hidden" name="id" value="${d ? esc(d.id) : ''}" />
+          <div class="form-grid">
+            <div class="form-field">
+              <label for="dType">Jenis dokumen</label>
+              <select class="select" id="dType" name="type">${Object.entries(DOC_TYPES).map(([k, t]) => `<option value="${k}" ${d && d.type === k ? 'selected' : ''}>${esc(t.label)}</option>`).join('')}</select>
+            </div>
+            <div class="form-field">
+              <label for="dMember">Milik</label>
+              <select class="select" id="dMember" name="memberId">
+                <option value="">Keluarga (bersama)</option>
+                ${hh().members.map((m) => `<option value="${esc(m.id)}" ${memberId === m.id ? 'selected' : ''}>${esc(m.name)}</option>`).join('')}
+              </select>
+            </div>
+            <div class="form-field full">
+              <label for="dNumber">Nomor <span>wajib</span></label>
+              <input class="input mono" id="dNumber" name="number" maxlength="80" value="${v('number')}" inputmode="text" autocapitalize="characters" spellcheck="false" />
+            </div>
+            <div class="form-field full">
+              <label for="dLabel">Nama khusus <span>opsional</span></label>
+              <input class="input" id="dLabel" name="label" maxlength="60" value="${v('label')}" placeholder="Misal: SIM A, Polis Prudential, BPKB motor" />
+            </div>
+            <div class="form-field full">
+              <label for="dIssuer">Penerbit / keterangan</label>
+              <input class="input" id="dIssuer" name="issuer" maxlength="100" value="${v('issuer')}" placeholder="Misal: Disdukcapil, Faskes 1, Kanim" />
+            </div>
+            <div class="form-field">
+              <label for="dIssued">Tanggal terbit</label>
+              <input class="input" id="dIssued" name="issuedAt" type="date" value="${v('issuedAt')}" />
+            </div>
+            <div class="form-field">
+              <label for="dExpires">Berlaku sampai</label>
+              <input class="input" id="dExpires" name="expiresAt" type="date" value="${v('expiresAt')}" />
+              <p class="form-hint">Akan muncul pengingat 90 hari sebelumnya.</p>
+            </div>
+            <div class="form-field full">
+              <label for="dStored">Dokumen asli disimpan di</label>
+              <input class="input" id="dStored" name="storedAt" maxlength="120" value="${v('storedAt')}" placeholder="Misal: map biru, laci lemari kamar" />
+            </div>
+            <div class="form-field full">
+              <label for="dNote">Catatan</label>
+              <textarea class="textarea" id="dNote" name="note" maxlength="600">${v('note')}</textarea>
+            </div>
+          </div>
+        </form>`,
+      footer: `
+        <button class="btn btn-ghost" type="button" data-action="closeModal">Batal</button>
+        <button class="btn btn-primary" type="submit" form="documentForm">${d ? 'Simpan perubahan' : 'Simpan dokumen'}</button>`
+    });
+  }
+
+  function handleDocumentSubmit(form) {
+    clearFormErrors(form);
+    const data = new FormData(form);
+    const number = cleanText(data.get('number'), 80);
+    const issuedAt = String(data.get('issuedAt') || '');
+    const expiresAt = String(data.get('expiresAt') || '');
+    let valid = true;
+    if (!number) { showFieldError(form, 'number', 'Nomor dokumen wajib diisi.'); valid = false; }
+    if (issuedAt && !isValidISODate(issuedAt)) { showFieldError(form, 'issuedAt', 'Tanggal belum tepat.'); valid = false; }
+    if (expiresAt && !isValidISODate(expiresAt)) { showFieldError(form, 'expiresAt', 'Tanggal belum tepat.'); valid = false; }
+    if (issuedAt && expiresAt && expiresAt < issuedAt) { showFieldError(form, 'expiresAt', 'Tidak boleh sebelum tanggal terbit.'); valid = false; }
+    const type = String(data.get('type') || '');
+    const memberId = String(data.get('memberId') || '');
+    if (type === 'nik' && /^\d+$/.test(number.replace(/\s/g, '')) && number.replace(/\s/g, '').length !== 16) {
+      showFieldError(form, 'number', 'NIK biasanya 16 digit. Periksa lagi bila perlu.');
+      if (!form.dataset.warned) { form.dataset.warned = '1'; return; }
+      clearFormErrors(form);
+    }
+    if (!valid) return;
+    const id = String(data.get('id') || '');
+    const existing = id ? hh().documents.find((x) => x.id === id) : null;
+    const merged = normalizeHousehold({
+      members: hh().members,
+      documents: [{
+        ...(existing || {}),
+        id: id || uid(),
+        type,
+        memberId,
+        number: number.replace(/\s+/g, type === 'paspor' || type === 'lainnya' || type === 'asuransi' || type === 'kendaraan' ? ' ' : ''),
+        label: data.get('label'),
+        issuer: data.get('issuer'),
+        issuedAt,
+        expiresAt,
+        storedAt: data.get('storedAt'),
+        note: data.get('note')
+      }]
+    }).documents[0];
+    if (existing) Object.assign(existing, merged);
+    else hh().documents.push(merged);
+    saveState();
+    closeModal();
+    renderApp({ preserveScroll: true });
+    toast(existing ? 'Dokumen diperbarui.' : 'Dokumen disimpan.');
+  }
+
+  async function deleteDocument(docId) {
+    const d = hh().documents.find((x) => x.id === docId);
+    if (!d) return;
+    const ok = await askConfirm({ title: 'Hapus dokumen ini?', message: `<strong>${esc(docTypeLabel(d))}</strong> (${esc(maskNumber(d.number))}) akan dihapus.`, confirmText: 'Hapus', danger: true });
+    if (!ok) return;
+    hh().documents = hh().documents.filter((x) => x.id !== docId);
+    ui.revealed.delete(docId);
+    saveState();
+    renderApp({ preserveScroll: true });
+    toast('Dokumen dihapus.');
+  }
+
+  /* ---------- halaman: Kontak ---------- */
+
+  function renderContacts() {
+    const all = hh().contacts;
+    const filter = ui.contactFilter;
+    const list = all
+      .filter((c) => filter === 'all' || c.category === filter)
+      .sort((a, b) => Number(b.pinned) - Number(a.pinned) || a.name.localeCompare(b.name, 'id'));
+    const usedCats = Object.keys(CONTACT_CATS).filter((k) => all.some((c) => c.category === k));
+    return `
+      <div class="view-head">
+        <div>
+          <p class="eyebrow">Kontak penting</p>
+          <h1>Satu ketukan ke orang yang tepat.</h1>
+          <p class="view-sub">Kontak bertanda bintang muncul di beranda sebagai kontak darurat.</p>
+        </div>
+        <div class="view-actions">
+          <button class="btn btn-primary" type="button" data-action="addContact">${ic('plus')} Tambah kontak</button>
+        </div>
+      </div>
+      ${all.length ? `
+        <div class="filter-chips fam-filters" role="group" aria-label="Filter kategori kontak">
+          <button type="button" class="filter-chip ${filter === 'all' ? 'active' : ''}" data-action="setContactFilter" data-filter="all">Semua</button>
+          ${usedCats.map((k) => `<button type="button" class="filter-chip ${filter === k ? 'active' : ''}" data-action="setContactFilter" data-filter="${k}">${esc(CONTACT_CATS[k].label)}</button>`).join('')}
+        </div>
+        <div class="contact-grid">${list.map((c) => {
+          const cat = CONTACT_CATS[c.category];
+          const wa = waHref(c.phone);
+          return `
+            <article class="card contact-card">
+              <div class="contact-top">
+                <span class="row-icon tone-${cat.pill}">${ic(cat.icon)}</span>
+                <div class="contact-name">
+                  <h3>${esc(c.name)} ${c.pinned ? `<span class="star-flag" title="Kontak darurat">${ic('star')}</span>` : ''}</h3>
+                  <p>${esc(c.role || cat.label)}</p>
+                </div>
+                <span class="entry-actions">
+                  <button class="icon-btn sm" type="button" data-action="editContact" data-id="${esc(c.id)}" aria-label="Ubah kontak">${ic('edit')}</button>
+                  <button class="icon-btn sm danger" type="button" data-action="deleteContact" data-id="${esc(c.id)}" aria-label="Hapus kontak">${ic('trash')}</button>
+                </span>
+              </div>
+              <dl class="fact-list compact">
+                ${c.phone ? `<div><dt>Telepon</dt><dd><a href="${esc(telHref(c.phone))}">${esc(c.phone)}</a></dd></div>` : ''}
+                ${c.phone2 ? `<div><dt>Telepon 2</dt><dd><a href="${esc(telHref(c.phone2))}">${esc(c.phone2)}</a></dd></div>` : ''}
+                ${c.hours ? `<div><dt>Jam</dt><dd>${esc(c.hours)}</dd></div>` : ''}
+                ${c.address ? `<div><dt>Alamat</dt><dd>${esc(c.address)}</dd></div>` : ''}
+                ${c.note ? `<div><dt>Catatan</dt><dd>${esc(c.note)}</dd></div>` : ''}
+              </dl>
+              <div class="contact-actions">
+                ${c.phone ? `<a class="btn btn-primary btn-sm" href="${esc(telHref(c.phone))}">${ic('phone')} Telepon</a>` : ''}
+                ${wa ? `<a class="btn btn-ghost btn-sm" href="${esc(wa)}" target="_blank" rel="noopener noreferrer">${ic('message')} WhatsApp</a>` : ''}
+                ${c.phone ? copyButton(c.phone, 'nomor telepon') : ''}
+              </div>
+            </article>`;
+        }).join('') || familyEmpty({ icon: 'search', title: 'Tidak ada kontak di kategori ini', text: 'Pilih kategori lain.' })}</div>
+      ` : familyEmpty({ icon: 'phone', title: 'Belum ada kontak', text: 'Tambahkan kontak darurat, dokter anak, sekolah, dan pengurus lingkungan.', action: 'addContact', actionLabel: 'Tambah kontak' })}`;
+  }
+
+  function openContactModal(contactId = null) {
+    const c = contactId ? hh().contacts.find((x) => x.id === contactId) : null;
+    const v = (key) => (c ? esc(c[key] || '') : '');
+    openModal({
+      kicker: 'Kontak penting',
+      title: c ? 'Ubah kontak' : 'Tambah kontak',
+      size: 'modal-lg',
+      body: `
+        <form id="contactForm" novalidate autocomplete="off">
+          <input type="hidden" name="id" value="${c ? esc(c.id) : ''}" />
+          <div class="form-grid">
+            <div class="form-field">
+              <label for="cName">Nama <span>wajib</span></label>
+              <input class="input" id="cName" name="name" maxlength="80" value="${v('name')}" />
+            </div>
+            <div class="form-field">
+              <label for="cCat">Kategori</label>
+              <select class="select" id="cCat" name="category">${Object.entries(CONTACT_CATS).map(([k, cat]) => `<option value="${k}" ${c && c.category === k ? 'selected' : ''}>${esc(cat.label)}</option>`).join('')}</select>
+            </div>
+            <div class="form-field full">
+              <label for="cRole">Peran / keterangan</label>
+              <input class="input" id="cRole" name="role" maxlength="80" value="${v('role')}" placeholder="Misal: Dokter anak, Wali kelas, Ketua RT" />
+            </div>
+            <div class="form-field">
+              <label for="cPhone">Telepon</label>
+              <input class="input" id="cPhone" name="phone" type="tel" inputmode="tel" maxlength="30" value="${v('phone')}" />
+            </div>
+            <div class="form-field">
+              <label for="cPhone2">Telepon lain</label>
+              <input class="input" id="cPhone2" name="phone2" type="tel" inputmode="tel" maxlength="30" value="${v('phone2')}" />
+            </div>
+            <div class="form-field full">
+              <label for="cHours">Jam praktik / layanan</label>
+              <input class="input" id="cHours" name="hours" maxlength="100" value="${v('hours')}" />
+            </div>
+            <div class="form-field full">
+              <label for="cAddr">Alamat</label>
+              <textarea class="textarea" id="cAddr" name="address" maxlength="300">${v('address')}</textarea>
+            </div>
+            <div class="form-field full">
+              <label for="cNote">Catatan</label>
+              <textarea class="textarea" id="cNote" name="note" maxlength="600">${v('note')}</textarea>
+            </div>
+            <div class="form-field full">
+              <label class="check-line"><input type="checkbox" name="pinned" ${c && c.pinned ? 'checked' : ''} /> <span>Tampilkan di beranda sebagai kontak darurat</span></label>
+            </div>
+          </div>
+        </form>`,
+      footer: `
+        <button class="btn btn-ghost" type="button" data-action="closeModal">Batal</button>
+        <button class="btn btn-primary" type="submit" form="contactForm">${c ? 'Simpan perubahan' : 'Simpan kontak'}</button>`
+    });
+  }
+
+  function handleContactSubmit(form) {
+    clearFormErrors(form);
+    const data = new FormData(form);
+    const name = cleanText(data.get('name'), 80);
+    if (name.length < 2) { showFieldError(form, 'name', 'Nama minimal 2 karakter.'); return; }
+    const id = String(data.get('id') || '');
+    const existing = id ? hh().contacts.find((x) => x.id === id) : null;
+    const merged = normalizeHousehold({ contacts: [{
+      ...(existing || {}),
+      id: id || uid(),
+      name,
+      category: data.get('category'),
+      role: data.get('role'),
+      phone: data.get('phone'),
+      phone2: data.get('phone2'),
+      hours: data.get('hours'),
+      address: data.get('address'),
+      note: data.get('note'),
+      pinned: data.get('pinned') === 'on'
+    }] }).contacts[0];
+    if (existing) Object.assign(existing, merged);
+    else hh().contacts.push(merged);
+    saveState();
+    closeModal();
+    renderApp({ preserveScroll: true });
+    toast(existing ? 'Kontak diperbarui.' : 'Kontak disimpan.');
+  }
+
+  async function deleteContact(contactId) {
+    const c = hh().contacts.find((x) => x.id === contactId);
+    if (!c) return;
+    const ok = await askConfirm({ title: 'Hapus kontak ini?', message: `Kontak <strong>${esc(c.name)}</strong> akan dihapus.`, confirmText: 'Hapus', danger: true });
+    if (!ok) return;
+    hh().contacts = hh().contacts.filter((x) => x.id !== contactId);
+    saveState();
+    renderApp({ preserveScroll: true });
+    toast('Kontak dihapus.');
+  }
+
+  /* ---------- halaman: Tagihan ---------- */
+
+  function renderBills() {
+    const bills = [...hh().bills].sort((a, b) => (a.dueDay || 99) - (b.dueDay || 99));
+    const month = monthKey();
+    const monthLabel = formatMonth(`${month}-01`);
+    const withAmount = bills.filter((b) => b.amount);
+    const total = withAmount.reduce((sum, b) => sum + b.amount, 0);
+    const paidCount = bills.filter((b) => b.dueDay && (b.paidMonths.includes(month) || b.autopay)).length;
+    const dueCount = bills.filter((b) => b.dueDay).length;
+    return `
+      <div class="view-head">
+        <div>
+          <p class="eyebrow">Tagihan rutin</p>
+          <h1>Nomor pelanggan & jatuh tempo.</h1>
+          <p class="view-sub">Simpan nomor pelanggan supaya bisa bayar dari mana saja. Tandai lunas tiap bulan agar tidak dobel bayar.</p>
+        </div>
+        <div class="view-actions">
+          <button class="btn btn-primary" type="button" data-action="addBill">${ic('plus')} Tambah tagihan</button>
+        </div>
+      </div>
+      ${bills.length ? `
+        <div class="bill-summary card card-pad">
+          <div><small>Bulan ini</small><strong>${esc(monthLabel)}</strong></div>
+          <div><small>Sudah dibayar</small><strong>${paidCount} / ${dueCount}</strong></div>
+          ${total ? `<div><small>Perkiraan total</small><strong>${esc(formatRupiah(total))}</strong></div>` : ''}
+        </div>
+        <div class="bill-list">${bills.map((b) => {
+          const cat = BILL_CATS[b.category];
+          const due = billDueInfo(b);
+          let status = '';
+          if (due) {
+            if (b.autopay) status = `<span class="pill green">${ic('refresh')} Autodebet</span>`;
+            else if (due.paid) status = `<span class="pill green">${ic('check')} Lunas</span>`;
+            else if (due.days < 0) status = `<span class="pill coral">Lewat ${-due.days} hari</span>`;
+            else if (due.days <= 7) status = `<span class="pill gold">${due.days === 0 ? 'Hari ini' : `${due.days} hari lagi`}</span>`;
+            else status = `<span class="pill">Tgl ${b.dueDay}</span>`;
+          }
+          return `
+            <article class="card bill-card">
+              <div class="bill-main">
+                <span class="pill ${cat.pill}">${esc(cat.label)}</span>
+                <h3>${esc(b.name)}</h3>
+                ${b.customerNumber ? `<div class="bill-number"><span>No. pelanggan</span><code>${esc(b.customerNumber)}</code>${copyButton(b.customerNumber, 'nomor pelanggan')}</div>` : ''}
+                <p class="bill-meta">${[b.accountName ? `a.n. ${esc(b.accountName)}` : '', b.dueDay ? `Jatuh tempo tgl ${b.dueDay}` : '', b.amount ? `± ${esc(formatRupiah(b.amount))}` : '', b.payMethod ? esc(b.payMethod) : ''].filter(Boolean).join(' · ')}</p>
+                ${b.note ? `<p class="doc-note">${esc(b.note)}</p>` : ''}
+              </div>
+              <div class="bill-side">
+                ${status}
+                ${due && !b.autopay ? `<button class="btn btn-sm ${due.paid ? 'btn-ghost' : 'btn-soft'}" type="button" data-action="toggleBillPaid" data-id="${esc(b.id)}">${due.paid ? 'Batalkan lunas' : `${ic('check')} Tandai lunas`}</button>` : ''}
+                <span class="entry-actions">
+                  <button class="icon-btn sm" type="button" data-action="editBill" data-id="${esc(b.id)}" aria-label="Ubah tagihan">${ic('edit')}</button>
+                  <button class="icon-btn sm danger" type="button" data-action="deleteBill" data-id="${esc(b.id)}" aria-label="Hapus tagihan">${ic('trash')}</button>
+                </span>
+              </div>
+            </article>`;
+        }).join('')}</div>
+      ` : familyEmpty({ icon: 'receipt', title: 'Belum ada tagihan', text: 'Mulai dari listrik, air, internet, dan iuran lingkungan.', action: 'addBill', actionLabel: 'Tambah tagihan' })}`;
+  }
+
+  function openBillModal(billId = null) {
+    const b = billId ? hh().bills.find((x) => x.id === billId) : null;
+    const v = (key) => (b && b[key] != null ? esc(b[key]) : '');
+    openModal({
+      kicker: 'Tagihan rutin',
+      title: b ? 'Ubah tagihan' : 'Tambah tagihan',
+      size: 'modal-lg',
+      body: `
+        <form id="billForm" novalidate autocomplete="off">
+          <input type="hidden" name="id" value="${b ? esc(b.id) : ''}" />
+          <div class="form-grid">
+            <div class="form-field">
+              <label for="bName">Nama tagihan <span>wajib</span></label>
+              <input class="input" id="bName" name="name" maxlength="80" value="${v('name')}" placeholder="Misal: PLN rumah" />
+            </div>
+            <div class="form-field">
+              <label for="bCat">Kategori</label>
+              <select class="select" id="bCat" name="category">${Object.entries(BILL_CATS).map(([k, cat]) => `<option value="${k}" ${b && b.category === k ? 'selected' : ''}>${esc(cat.label)}</option>`).join('')}</select>
+            </div>
+            <div class="form-field">
+              <label for="bNum">Nomor pelanggan / ID</label>
+              <input class="input mono" id="bNum" name="customerNumber" maxlength="60" value="${v('customerNumber')}" spellcheck="false" />
+            </div>
+            <div class="form-field">
+              <label for="bAcc">Atas nama</label>
+              <input class="input" id="bAcc" name="accountName" maxlength="80" value="${v('accountName')}" />
+            </div>
+            <div class="form-field">
+              <label for="bDue">Jatuh tempo tiap tanggal</label>
+              <input class="input" id="bDue" name="dueDay" type="number" min="1" max="31" inputmode="numeric" value="${v('dueDay')}" placeholder="1–31" />
+            </div>
+            <div class="form-field">
+              <label for="bAmount">Perkiraan nominal</label>
+              <div class="input-group">
+                <span class="input-suffix prefix">Rp</span>
+                <input class="input" id="bAmount" name="amount" type="number" min="0" step="1000" inputmode="numeric" value="${v('amount')}" />
+              </div>
+            </div>
+            <div class="form-field full">
+              <label for="bPay">Cara bayar</label>
+              <input class="input" id="bPay" name="payMethod" maxlength="80" value="${v('payMethod')}" placeholder="Misal: m-banking, minimarket, transfer bendahara" />
+            </div>
+            <div class="form-field full">
+              <label class="check-line"><input type="checkbox" name="autopay" ${b && b.autopay ? 'checked' : ''} /> <span>Dibayar otomatis (autodebet) — tidak perlu ditandai lunas</span></label>
+            </div>
+            <div class="form-field full">
+              <label for="bNote">Catatan</label>
+              <textarea class="textarea" id="bNote" name="note" maxlength="600">${v('note')}</textarea>
+            </div>
+          </div>
+        </form>`,
+      footer: `
+        <button class="btn btn-ghost" type="button" data-action="closeModal">Batal</button>
+        <button class="btn btn-primary" type="submit" form="billForm">${b ? 'Simpan perubahan' : 'Simpan tagihan'}</button>`
+    });
+  }
+
+  function handleBillSubmit(form) {
+    clearFormErrors(form);
+    const data = new FormData(form);
+    const name = cleanText(data.get('name'), 80);
+    const dueRaw = String(data.get('dueDay') || '').trim();
+    const amountRaw = String(data.get('amount') || '').trim();
+    let valid = true;
+    if (name.length < 2) { showFieldError(form, 'name', 'Nama minimal 2 karakter.'); valid = false; }
+    if (dueRaw && !(Number.isInteger(Number(dueRaw)) && Number(dueRaw) >= 1 && Number(dueRaw) <= 31)) { showFieldError(form, 'dueDay', 'Isi tanggal 1–31.'); valid = false; }
+    if (amountRaw && !(Number(amountRaw) >= 0)) { showFieldError(form, 'amount', 'Nominal belum tepat.'); valid = false; }
+    if (!valid) return;
+    const id = String(data.get('id') || '');
+    const existing = id ? hh().bills.find((x) => x.id === id) : null;
+    const merged = normalizeHousehold({ bills: [{
+      ...(existing || {}),
+      id: id || uid(),
+      name,
+      category: data.get('category'),
+      customerNumber: data.get('customerNumber'),
+      accountName: data.get('accountName'),
+      dueDay: dueRaw ? Number(dueRaw) : null,
+      amount: amountRaw ? Number(amountRaw) : null,
+      payMethod: data.get('payMethod'),
+      autopay: data.get('autopay') === 'on',
+      note: data.get('note')
+    }] }).bills[0];
+    if (existing) Object.assign(existing, merged);
+    else hh().bills.push(merged);
+    saveState();
+    closeModal();
+    renderApp({ preserveScroll: true });
+    toast(existing ? 'Tagihan diperbarui.' : 'Tagihan disimpan.');
+  }
+
+  function toggleBillPaid(billId) {
+    const b = hh().bills.find((x) => x.id === billId);
+    if (!b) return;
+    const key = monthKey();
+    if (b.paidMonths.includes(key)) {
+      b.paidMonths = b.paidMonths.filter((m) => m !== key);
+      toast(`${b.name} ditandai belum lunas.`);
+    } else {
+      b.paidMonths = [...b.paidMonths, key].slice(-24);
+      toast(`${b.name} lunas untuk ${formatMonth(`${key}-01`)}.`);
+    }
+    saveState();
+    renderApp({ preserveScroll: true });
+  }
+
+  async function deleteBill(billId) {
+    const b = hh().bills.find((x) => x.id === billId);
+    if (!b) return;
+    const ok = await askConfirm({ title: 'Hapus tagihan ini?', message: `Tagihan <strong>${esc(b.name)}</strong> akan dihapus.`, confirmText: 'Hapus', danger: true });
+    if (!ok) return;
+    hh().bills = hh().bills.filter((x) => x.id !== billId);
+    saveState();
+    renderApp({ preserveScroll: true });
+    toast('Tagihan dihapus.');
+  }
+
+  function openBillView(billId) {
+    navigate('bills');
+    window.setTimeout(() => {
+      const target = $(`[data-action="editBill"][data-id="${CSS.escape(billId)}"]`);
+      const card = target && target.closest('.bill-card');
+      if (card) {
+        card.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        card.classList.add('is-flash');
+        window.setTimeout(() => card.classList.remove('is-flash'), 1600);
+      }
+    }, 120);
+  }
+
+  /* ---------- nama keluarga ---------- */
+
+  function openHouseholdModal() {
+    openModal({
+      kicker: 'Rumah keluarga',
+      title: 'Nama keluarga',
+      subtitle: 'Tampil di beranda, misalnya “Keluarga Pratama”.',
+      body: `
+        <form id="householdForm" novalidate autocomplete="off">
+          <div class="form-field">
+            <label for="hName">Keluarga …</label>
+            <input class="input" id="hName" name="name" maxlength="60" value="${esc(hh().name)}" placeholder="Misal: Pratama" />
+          </div>
+        </form>`,
+      footer: `
+        <button class="btn btn-ghost" type="button" data-action="closeModal">Batal</button>
+        <button class="btn btn-primary" type="submit" form="householdForm">Simpan</button>`
+    });
+  }
+
+  function handleHouseholdSubmit(form) {
+    hh().name = cleanText(new FormData(form).get('name'), 60).replace(/^keluarga\s+/i, '');
+    saveState();
+    closeModal();
+    renderApp();
+    toast('Nama keluarga disimpan.');
+  }
+
+  /* ---------- salin teks ---------- */
+
+  async function copyText(value, label) {
+    try {
+      if (navigator.clipboard && window.isSecureContext) {
+        await navigator.clipboard.writeText(value);
+      } else {
+        const area = document.createElement('textarea');
+        area.value = value;
+        area.setAttribute('readonly', '');
+        area.style.position = 'fixed';
+        area.style.opacity = '0';
+        document.body.appendChild(area);
+        area.select();
+        document.execCommand('copy');
+        area.remove();
+      }
+      toast(`${label ? label.charAt(0).toUpperCase() + label.slice(1) : 'Teks'} disalin.`);
+    } catch (err) {
+      toast('Tidak bisa menyalin otomatis. Tekan lama pada nomor untuk menyalin.', 'error');
+    }
+  }
+
+  function rerenderSecrets() {
+    if (document.body.classList.contains('modal-open')) {
+      $$('.modal-panel .secret-line').forEach((line) => {
+        const btn = line.querySelector('[data-action="toggleReveal"]');
+        if (!btn) return;
+        const doc = hh().documents.find((d) => d.id === btn.dataset.id);
+        if (doc) line.outerHTML = numberLine(doc.id, doc.number, docTypeLabel(doc));
+      });
+    }
+    if (FAMILY_VIEWS.includes(ui.view)) renderApp({ preserveScroll: true, animate: false });
+  }
+
+
+  /* =========================================================
      State & penyimpanan
      ========================================================= */
 
@@ -165,6 +1544,7 @@
       milestones: {},
       immunizations: {},
       journal: [],
+      household: defaultHousehold(),
       activeChildId: null,
       createdAt: new Date().toISOString(),
       updatedAt: new Date().toISOString()
@@ -252,6 +1632,7 @@
         createdAt: j.createdAt || new Date().toISOString()
       }));
 
+    next.household = normalizeHousehold(raw.household);
     next.activeChildId = childIds.has(String(raw.activeChildId)) ? String(raw.activeChildId) : (children[0] ? children[0].id : null);
     next.createdAt = raw.createdAt || next.createdAt;
     next.updatedAt = raw.updatedAt || next.updatedAt;
@@ -273,7 +1654,12 @@
   }
 
   const ui = {
-    view: 'dashboard',
+    view: 'home',
+    homeQuery: '',
+    docFilter: 'all',
+    contactFilter: 'all',
+    revealed: new Set(),
+    revealAll: false,
     metric: 'weight',
     profileOpen: false,
     milestoneMode: 'focus',
@@ -571,6 +1957,11 @@
     else if (formId === 'journalForm') handleJournalSubmit(form);
     else if (formId === 'vaccineForm') handleVaccineSubmit(form);
     else if (formId === 'cloudLoginForm') handleCloudLogin(form);
+    else if (formId === 'memberForm') handleMemberSubmit(form);
+    else if (formId === 'documentForm') handleDocumentSubmit(form);
+    else if (formId === 'contactForm') handleContactSubmit(form);
+    else if (formId === 'billForm') handleBillSubmit(form);
+    else if (formId === 'householdForm') handleHouseholdSubmit(form);
   }
 
   function openModal({ kicker = '', title, subtitle = '', body = '', footer = '', size = '' }) {
@@ -656,26 +2047,6 @@
     }
   }
 
-  function validateDateField(form, name, { min = null, max = todayISO() } = {}) {
-    const value = String(new FormData(form).get(name) || '');
-    if (!value) {
-      showFieldError(form, name, 'Tanggal wajib diisi.');
-      return false;
-    }
-    if (!isValidISODate(value)) {
-      showFieldError(form, name, 'Format tanggal belum tepat.');
-      return false;
-    }
-    if (min && value < min) {
-      showFieldError(form, name, `Tanggal tidak boleh sebelum ${formatDate(min)}.`);
-      return false;
-    }
-    if (max && value > max) {
-      showFieldError(form, name, 'Tanggal tidak boleh di masa depan.');
-      return false;
-    }
-    return true;
-  }
 
   /* =========================================================
      Data contoh
@@ -752,6 +2123,7 @@
       milestones: { [childId]: milestones },
       immunizations: { [childId]: immunizations },
       journal,
+      household: createDemoHousehold(),
       activeChildId: childId,
       createdAt: new Date().toISOString(),
       updatedAt: new Date().toISOString()
@@ -824,7 +2196,7 @@
     if (code === 'rate_limited') return 'Terlalu banyak percobaan. Tunggu beberapa menit lalu coba lagi.';
     if (code === 'unauthorized' || status === 401) return 'Sesi berakhir. Silakan masuk kembali.';
     if (code === 'version_conflict') return 'Data telah berubah di perangkat lain.';
-    if (code === 'data_too_large') return 'Data keluarga terlalu besar untuk dikirim.';
+    if (code === 'data_too_large' || code === 'payload_too_large' || status === 413) return 'Data keluarga terlalu besar untuk dikirim. Hapus beberapa catatan lama atau ekspor cadangan terlebih dahulu.';
     if (code === 'share_disabled') return 'Tautan lihat-saja sedang dinonaktifkan.';
     if (code === 'share_not_found') return 'Tautan tidak berlaku atau sudah diganti.';
     if (code === 'share_empty') return 'Belum ada data keluarga untuk dibagikan.';
@@ -1022,12 +2394,26 @@
   }
 
   function isDemoOnlyState(data = state) {
-    return hasDemoData(data) && data.children.every((child) => child.id === 'demo-raka');
+    const h = data.household || defaultHousehold();
+    const demoItem = (item) => String(item.id).startsWith('demo-');
+    return hasDemoData(data) && data.children.every((child) => child.id === 'demo-raka') &&
+      h.members.every(demoItem) && h.documents.every(demoItem) && h.contacts.every(demoItem) && h.bills.every(demoItem);
+  }
+
+  function recordCount(data) {
+    if (!data || typeof data !== 'object') return 0;
+    const h = data.household || {};
+    const len = (x) => (Array.isArray(x) ? x.length : 0);
+    return len(data.children) + len(h.members) + len(h.documents) + len(h.contacts) + len(h.bills);
   }
 
   function removeDemoData() {
+    const householdHadDemo = removeDemoHousehold();
     const demoIds = new Set(state.children.filter((child) => child.id === 'demo-raka').map((child) => child.id));
-    if (!demoIds.size) return false;
+    if (!demoIds.size) {
+      if (householdHadDemo) saveState();
+      return householdHadDemo;
+    }
     state.children = state.children.filter((child) => !demoIds.has(child.id));
     state.measurements = state.measurements.filter((m) => !demoIds.has(m.childId));
     state.journal = state.journal.filter((j) => !demoIds.has(j.childId));
@@ -1130,7 +2516,7 @@
   }
 
   function cloudHasChildren(data) {
-    return Boolean(data && Array.isArray(data.children) && data.children.length);
+    return recordCount(data) > 0;
   }
 
   function applyRemoteState(remote) {
@@ -1197,7 +2583,7 @@
       const remote = await fetchCloudState();
       const meta = readCloudMeta();
       const remoteHasData = cloudHasChildren(remote.data);
-      const localHasData = state.children.length > 0;
+      const localHasData = recordCount(state) > 0;
 
       if (!meta.version) {
         if (remoteHasData && localHasData) {
@@ -1209,8 +2595,8 @@
           CLOUD.conflict = {
             remote,
             initial: true,
-            localChildren: state.children.length,
-            remoteChildren: remote.data.children.length
+            localChildren: recordCount(state),
+            remoteChildren: recordCount(remote.data)
           };
           CLOUD.status = 'conflict';
           updateCloudChip();
@@ -1246,8 +2632,8 @@
           CLOUD.conflict = {
             remote,
             initial: false,
-            localChildren: state.children.length,
-            remoteChildren: remoteHasData ? remote.data.children.length : 0
+            localChildren: recordCount(state),
+            remoteChildren: recordCount(remote.data)
           };
           CLOUD.status = 'conflict';
           updateCloudChip();
@@ -1262,8 +2648,8 @@
       CLOUD.conflict = {
         remote,
         initial: true,
-        localChildren: state.children.length,
-        remoteChildren: remoteHasData ? remote.data.children.length : 0
+        localChildren: recordCount(state),
+        remoteChildren: recordCount(remote.data)
       };
       CLOUD.status = 'conflict';
       updateCloudChip();
@@ -1282,8 +2668,8 @@
           CLOUD.conflict = {
             remote: latest,
             initial: false,
-            localChildren: state.children.length,
-            remoteChildren: cloudHasChildren(latest.data) ? latest.data.children.length : 0
+            localChildren: recordCount(state),
+            remoteChildren: recordCount(latest.data)
           };
           CLOUD.status = 'conflict';
         } catch (nested) {
@@ -1317,7 +2703,7 @@
     }
     const ok = await askConfirm({
       title: 'Timpa data keluarga?',
-      message: `Semua perangkat yang memakai akun keluarga akan menerima <strong>data di perangkat ini</strong> (${state.children.length} profil). Data yang tersimpan di Netlify akan diganti. Tautan lihat-saja juga akan menampilkan data ini.`,
+      message: `Semua perangkat yang memakai akun keluarga akan menerima <strong>data di perangkat ini</strong> (${recordCount(state)} data utama). Data yang tersimpan di Netlify akan diganti. Tautan lihat-saja juga akan menampilkan data ini.`,
       confirmText: 'Ya, gunakan data ini',
       danger: true
     });
@@ -1544,8 +2930,8 @@
         <div class="share-state-card card">
           <span class="share-state-icon">${ic('lock')}</span>
           <p class="eyebrow">Mode lihat saja</p>
-          <h1>Halaman pengaturan tidak tersedia.</h1>
-          <p>Tautan ini hanya untuk melihat data keluarga. Untuk mengedit atau mengatur sinkronisasi, masuk memakai akun keluarga di halaman utama.</p>
+          <h1>Halaman ini tidak tersedia.</h1>
+          <p>Tautan ini hanya untuk melihat catatan tumbuh kembang anak. Data keluarga (dokumen, kontak, tagihan) tidak pernah ikut dibagikan. Untuk mengedit atau mengatur sinkronisasi, masuk memakai akun keluarga di halaman utama.</p>
           <a class="btn btn-soft" href="#dashboard">${ic('dashboard')} Kembali ke ringkasan</a>
         </div>
       </div>`;
@@ -1842,7 +3228,6 @@
   }
 
   function renderDashboard(child) {
-    const age = ageOn(child.birthDate);
     const latest = latestMeasurement(child.id);
     const band = currentBand(child);
     const progress = bandProgress(child, band.id);
@@ -2640,7 +4025,6 @@
     const kb = Math.max(1, Math.round(bytes / 1024));
     const maxKb = 5 * 1024;
     const percent = clamp((kb / maxKb) * 100, 1, 100);
-    const active = activeChild();
     return `
       <div class="view-head">
         <div>
@@ -2717,7 +4101,7 @@
               <div class="progress-track"><div class="progress-fill lime" style="width:${percent}%"></div></div>
             </div>
             <div class="data-row" style="padding-top:8px">
-              <span class="data-row-copy"><small>${state.children.length} profil · ${state.measurements.length} pengukuran · ${state.journal.length} cerita jurnal</small></span>
+              <span class="data-row-copy"><small>${state.household.members.length} anggota · ${state.household.documents.length} dokumen · ${state.household.contacts.length} kontak · ${state.household.bills.length} tagihan · ${state.children.length} profil anak · ${state.journal.length} jurnal</small></span>
             </div>
             <div class="danger-zone">
               <h3>Mulai dari awal</h3>
@@ -2836,8 +4220,8 @@
   function renderCloudConflict() {
     if (!CLOUD.conflict) return '';
     const remote = CLOUD.conflict.remote;
-    const localCount = CLOUD.conflict.localChildren != null ? CLOUD.conflict.localChildren : state.children.length;
-    const remoteCount = CLOUD.conflict.remoteChildren != null ? CLOUD.conflict.remoteChildren : (remote && remote.data && remote.data.children ? remote.data.children.length : 0);
+    const localCount = CLOUD.conflict.localChildren != null ? CLOUD.conflict.localChildren : recordCount(state);
+    const remoteCount = CLOUD.conflict.remoteChildren != null ? CLOUD.conflict.remoteChildren : recordCount(remote && remote.data);
     return `
       <section class="card cloud-conflict">
         <div class="cloud-conflict-head">
@@ -2849,9 +4233,9 @@
           </div>
         </div>
         <div class="cloud-conflict-compare">
-          <div><small>Perangkat ini</small><strong>${localCount} profil</strong><span>${state.measurements.length} pengukuran · ${state.journal.length} cerita</span></div>
+          <div><small>Perangkat ini</small><strong>${localCount} data utama</strong><span>${state.household.members.length} anggota · ${state.household.documents.length} dokumen · ${state.children.length} anak</span></div>
           <span class="cloud-vs">vs</span>
-          <div><small>Data Netlify</small><strong>${remoteCount} profil</strong><span>Diperbarui ${esc(relativeSyncTime(remote && remote.updatedAt))}</span></div>
+          <div><small>Data Netlify</small><strong>${remoteCount} data utama</strong><span>Diperbarui ${esc(relativeSyncTime(remote && remote.updatedAt))}</span></div>
         </div>
         <div class="cloud-conflict-actions">
           <button class="btn btn-ghost" type="button" data-action="cloudUseCloud">${ic('cloud-check')} Pakai data Netlify</button>
@@ -2907,7 +4291,7 @@
             </div>
             <div class="cloud-meta-grid">
               <div><small>Terakhir sinkron</small><strong>${esc(relativeSyncTime(CLOUD.lastSyncAt))}</strong></div>
-              <div><small>Data lokal</small><strong>${state.children.length} profil</strong><span>${state.measurements.length} pengukuran · ${state.journal.length} jurnal</span></div>
+              <div><small>Data lokal</small><strong>${recordCount(state)} data utama</strong><span>${state.measurements.length} pengukuran · ${state.journal.length} jurnal</span></div>
             </div>
             <div class="cloud-sync-actions">
               <button class="btn btn-primary btn-sm" type="button" data-action="cloudSync" ${CLOUD.syncing || CLOUD.conflict ? 'disabled' : ''}>${ic('refresh')} Sinkronkan sekarang</button>
@@ -3006,17 +4390,19 @@
   }
 
   function updateChrome(child) {
+    const familyView = FAMILY_VIEWS.includes(ui.view);
     let effectiveView = ui.view;
-    if (!child && !['settings', 'family'].includes(ui.view)) effectiveView = 'dashboard';
+    if (!child && !familyView && !['settings', 'family'].includes(ui.view)) effectiveView = 'dashboard';
     if (READ_ONLY_MODE && ['settings', 'family'].includes(effectiveView)) effectiveView = 'dashboard';
     $$('.nav-item').forEach((item) => {
       item.classList.toggle('active', item.dataset.nav === effectiveView);
     });
     let crumb;
     if (READ_ONLY_MODE && (SHARE_LOADING || SHARE_ERROR)) crumb = 'Lihat saja';
-    else if (!child && !['settings', 'family'].includes(ui.view)) crumb = 'Mulai';
+    else if (!child && !familyView && !['settings', 'family'].includes(ui.view)) crumb = 'Tumbuh kembang';
     else crumb = VIEW_META[ui.view] ? VIEW_META[ui.view].crumb : 'Ringkasan';
     $('#pageCrumb').textContent = crumb;
+    $('#crumbRoot').textContent = READ_ONLY_MODE ? 'Tumbuh' : 'Serumah';
     $('#headerDateText').textContent = new Date().toLocaleDateString('id-ID', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' });
 
     const switchAvatar = $('#switchAvatar');
@@ -3036,11 +4422,11 @@
     $('#profileMenu').innerHTML = profileMenuMarkup(child);
     $('#profileMenu').hidden = !ui.profileOpen;
     $('#profileSwitch').setAttribute('aria-expanded', String(ui.profileOpen));
-    $('#profileSwitchWrap').classList.toggle('is-hidden', READ_ONLY_MODE && (SHARE_LOADING || Boolean(SHARE_ERROR) || !child));
+    $('#profileSwitchWrap').classList.toggle('is-hidden', (!READ_ONLY_MODE && !TUMBUH_VIEWS.includes(ui.view)) || (READ_ONLY_MODE && (SHARE_LOADING || Boolean(SHARE_ERROR) || !child)));
     if (READ_ONLY_MODE) {
       $('#syncChip').hidden = true;
     }
-    document.title = READ_ONLY_MODE ? 'Lihat saja · Tumbuh' : `${crumb} · Tumbuh`;
+    document.title = READ_ONLY_MODE ? 'Lihat saja · Tumbuh' : `${crumb} · Serumah`;
   }
 
   function renderApp({ preserveScroll = false, animate = true } = {}) {
@@ -3051,14 +4437,19 @@
     if (READ_ONLY_MODE) {
       if (SHARE_LOADING) content = renderShareLoading();
       else if (SHARE_ERROR) content = renderShareError();
-      else if (['settings', 'family'].includes(ui.view)) content = renderReadonlyBlocked();
+      else if (['settings', 'family', ...FAMILY_VIEWS].includes(ui.view)) content = renderReadonlyBlocked();
       else if (!child) content = renderShareError();
       else if (ui.view === 'growth') content = renderGrowth(child);
       else if (ui.view === 'milestones') content = renderMilestones(child);
       else if (ui.view === 'immunizations') content = renderImmunizations(child);
       else if (ui.view === 'journal') content = renderJournal(child);
       else content = renderDashboard(child);
-    } else if (!child && !['settings', 'family'].includes(ui.view)) content = renderWelcome();
+    } else if (ui.view === 'home') content = renderHome();
+    else if (ui.view === 'members') content = renderMembers();
+    else if (ui.view === 'documents') content = renderDocuments();
+    else if (ui.view === 'contacts') content = renderContacts();
+    else if (ui.view === 'bills') content = renderBills();
+    else if (!child && !['settings', 'family'].includes(ui.view)) content = renderWelcome();
     else if (ui.view === 'growth') content = renderGrowth(child);
     else if (ui.view === 'milestones') content = renderMilestones(child);
     else if (ui.view === 'immunizations') content = renderImmunizations(child);
@@ -3543,7 +4934,7 @@
 
   function exportData() {
     const payload = {
-      app: 'Tumbuh',
+      app: 'Serumah',
       version: 1,
       exportedAt: new Date().toISOString(),
       ...state
@@ -3552,7 +4943,7 @@
     const url = URL.createObjectURL(blob);
     const link = document.createElement('a');
     link.href = url;
-    link.download = `tumbuh-cadangan-${todayISO()}.json`;
+    link.download = `serumah-cadangan-${todayISO()}.json`;
     document.body.appendChild(link);
     link.click();
     link.remove();
@@ -3566,24 +4957,24 @@
       const text = await file.text();
       const parsed = JSON.parse(text);
       const normalized = normalizeState(parsed);
-      if (!normalized.children.length) {
-        throw new Error('Tidak ada profil anak yang bisa diimpor.');
+      if (!recordCount(normalized)) {
+        throw new Error('Tidak ada data yang bisa diimpor dari berkas ini.');
       }
       const cloudWarning = CLOUD.authenticated
         ? ' Data ini juga akan dikirim ke Netlify dan menggantikan data keluarga di semua perangkat.'
         : '';
       const ok = await askConfirm({
         title: 'Impor data ini?',
-        message: `Berkas berisi <strong>${normalized.children.length} profil</strong> dan ${normalized.measurements.length} pengukuran. Data yang ada saat ini akan diganti.${cloudWarning}`,
+        message: `Berkas berisi <strong>${normalized.household.members.length} anggota, ${normalized.household.documents.length} dokumen</strong>, ${normalized.children.length} profil anak, dan ${normalized.measurements.length} pengukuran. Data yang ada saat ini akan diganti.${cloudWarning}`,
         confirmText: 'Impor & ganti data',
         danger: true
       });
       if (!ok) return;
       state = normalized;
       saveState();
-      ui.view = 'dashboard';
+      ui.view = 'home';
       ui.profileOpen = false;
-      if (location.hash !== '#dashboard') location.hash = '#dashboard';
+      if (location.hash !== '#home') location.hash = '#home';
       else renderApp();
       toast('Data berhasil diimpor.');
     } catch (err) {
@@ -3597,7 +4988,7 @@
       toast('Keluar dari akun keluarga sebelum memuat data contoh.', 'error');
       return;
     }
-    if (state.children.length) {
+    if (recordCount(state) > 0) {
       const ok = await askConfirm({
         title: 'Muat data contoh?',
         message: 'Data yang ada saat ini akan diganti dengan profil dan cerita contoh. Ekspor cadangan terlebih dahulu bila diperlukan.',
@@ -3608,9 +4999,9 @@
     }
     state = createDemoState();
     saveState();
-    ui.view = 'dashboard';
+    ui.view = 'home';
     ui.profileOpen = false;
-    if (location.hash !== '#dashboard') location.hash = '#dashboard';
+    if (location.hash !== '#home') location.hash = '#home';
     else renderApp();
     toast('Data contoh siap dijelajahi.');
   }
@@ -3619,13 +5010,13 @@
     const ok = await askConfirm({
       title: 'Hapus semua data?',
       message: CLOUD.authenticated
-        ? 'Semua profil, pengukuran, milestone, imunisasi, dan jurnal akan dihapus dari perangkat ini <strong>dan dari Netlify</strong>. Perangkat lain serta tautan lihat-saja juga akan kehilangan data ini. Tindakan ini tidak bisa dibatalkan.'
-        : 'Semua profil anak, pengukuran, milestone, imunisasi, dan jurnal akan dihapus dari perangkat ini. Tindakan ini tidak bisa dibatalkan.',
+        ? 'Semua data keluarga (anggota, dokumen, kontak, tagihan) serta catatan Tumbuh akan dihapus dari perangkat ini <strong>dan dari Netlify</strong>. Perangkat lain serta tautan lihat-saja juga akan kehilangan data ini. Tindakan ini tidak bisa dibatalkan.'
+        : 'Semua data keluarga (anggota, dokumen, kontak, tagihan) serta catatan Tumbuh akan dihapus dari perangkat ini. Tindakan ini tidak bisa dibatalkan.',
       confirmText: 'Ya, hapus semua',
       danger: true
     });
     if (!ok) return;
-    ui.view = 'dashboard';
+    ui.view = 'home';
     ui.profileOpen = false;
     ui.journalFilter = 'all';
     ui.journalQuery = '';
@@ -3634,21 +5025,21 @@
       saveCloudMeta({ pending: true });
       CLOUD.pending = true;
       saveState();
-      if (location.hash !== '#dashboard') location.hash = '#dashboard';
+      if (location.hash !== '#home') location.hash = '#home';
       else renderApp();
       const synced = await syncNow({ auto: false });
       toast(synced ? 'Data keluarga telah dihapus dari perangkat dan Netlify.' : 'Data lokal dihapus. Sinkronisasi ke Netlify akan dicoba lagi saat online.', synced ? 'success' : 'error');
     } else {
       try { localStorage.removeItem(STORAGE_KEY); } catch (err) { /* noop */ }
       state = defaultState();
-      if (location.hash !== '#dashboard') location.hash = '#dashboard';
+      if (location.hash !== '#home') location.hash = '#home';
       else renderApp();
       toast('Semua data lokal telah dihapus.');
     }
   }
 
   function navigate(view) {
-    const target = VALID_VIEWS.includes(view) ? view : 'dashboard';
+    const target = VALID_VIEWS.includes(view) ? view : (READ_ONLY_MODE ? 'dashboard' : 'home');
     ui.profileOpen = false;
     if (location.hash !== `#${target}`) location.hash = target;
     else {
@@ -3695,7 +5086,10 @@
     'addJournal', 'editJournal', 'deleteJournal',
     'toggleMilestone', 'markVaccine', 'editVaccine', 'markNextVaccine', 'clearVaccine',
     'exportData', 'importData', 'loadDemo', 'resetData',
-    'cloudUseCloud', 'cloudKeepLocal', 'shareRotate', 'shareToggle'
+    'cloudUseCloud', 'cloudKeepLocal', 'shareRotate', 'shareToggle',
+    'addMember', 'editMember', 'deleteMember', 'viewMember', 'addDocument', 'editDocument', 'deleteDocument', 'viewDocument',
+    'addContact', 'editContact', 'deleteContact', 'addBill', 'editBill', 'deleteBill', 'viewBill', 'toggleBillPaid', 'editHousehold',
+    'toggleReveal', 'toggleRevealAll', 'copyText'
   ]);
 
   document.addEventListener('click', (event) => {
@@ -3807,6 +5201,43 @@
       return;
     }
     if (action === 'clearVaccine') { event.preventDefault(); clearVaccineRecord(actionEl.dataset.id); return; }
+    if (action === 'addMember') { event.preventDefault(); openMemberModal(); return; }
+    if (action === 'editMember') { event.preventDefault(); openMemberModal(actionEl.dataset.id); return; }
+    if (action === 'viewMember') { event.preventDefault(); openMemberDetail(actionEl.dataset.id); return; }
+    if (action === 'deleteMember') { event.preventDefault(); deleteMember(actionEl.dataset.id); return; }
+    if (action === 'addDocument') { event.preventDefault(); openDocumentModal(null, actionEl.dataset.member || ''); return; }
+    if (action === 'editDocument') { event.preventDefault(); openDocumentModal(actionEl.dataset.id); return; }
+    if (action === 'viewDocument') { event.preventDefault(); openDocumentView(actionEl.dataset.id); return; }
+    if (action === 'deleteDocument') { event.preventDefault(); deleteDocument(actionEl.dataset.id); return; }
+    if (action === 'addContact') { event.preventDefault(); openContactModal(); return; }
+    if (action === 'editContact') { event.preventDefault(); openContactModal(actionEl.dataset.id); return; }
+    if (action === 'deleteContact') { event.preventDefault(); deleteContact(actionEl.dataset.id); return; }
+    if (action === 'addBill') { event.preventDefault(); openBillModal(); return; }
+    if (action === 'editBill') { event.preventDefault(); openBillModal(actionEl.dataset.id); return; }
+    if (action === 'viewBill') { event.preventDefault(); closeModal({ restoreFocus: false, silent: true }); openBillView(actionEl.dataset.id); return; }
+    if (action === 'deleteBill') { event.preventDefault(); deleteBill(actionEl.dataset.id); return; }
+    if (action === 'toggleBillPaid') { event.preventDefault(); toggleBillPaid(actionEl.dataset.id); return; }
+    if (action === 'editHousehold') { event.preventDefault(); openHouseholdModal(); return; }
+    if (action === 'toggleReveal') {
+      event.preventDefault();
+      const id = actionEl.dataset.id;
+      if (ui.revealAll) { ui.revealAll = false; hh().documents.forEach((d) => { if (d.id !== id) ui.revealed.add(d.id); }); ui.revealed.delete(id); }
+      else if (ui.revealed.has(id)) ui.revealed.delete(id);
+      else ui.revealed.add(id);
+      rerenderSecrets();
+      return;
+    }
+    if (action === 'toggleRevealAll') { event.preventDefault(); ui.revealAll = !ui.revealAll; ui.revealed.clear(); rerenderSecrets(); return; }
+    if (action === 'copyText') { event.preventDefault(); copyText(actionEl.dataset.value || '', actionEl.dataset.label || ''); return; }
+    if (action === 'setDocFilter') { event.preventDefault(); ui.docFilter = DOC_TYPES[actionEl.dataset.filter] ? actionEl.dataset.filter : 'all'; renderApp({ preserveScroll: true }); return; }
+    if (action === 'setContactFilter') { event.preventDefault(); ui.contactFilter = CONTACT_CATS[actionEl.dataset.filter] ? actionEl.dataset.filter : 'all'; renderApp({ preserveScroll: true }); return; }
+    if (action === 'openTumbuh') {
+      event.preventDefault();
+      closeModal({ restoreFocus: false, silent: true });
+      if (getChild(actionEl.dataset.id)) { state.activeChildId = actionEl.dataset.id; saveState(); }
+      navigate('dashboard');
+      return;
+    }
     if (action === 'exportData') { event.preventDefault(); exportData(); return; }
     if (action === 'importData') {
       event.preventDefault();
@@ -3843,6 +5274,12 @@
   document.addEventListener('submit', handleFormSubmit);
 
   document.addEventListener('input', (event) => {
+    if (event.target && event.target.id === 'homeSearch') {
+      ui.homeQuery = event.target.value;
+      const results = $('#homeResults');
+      if (results) results.innerHTML = homeResultsHTML();
+      return;
+    }
     if (event.target && event.target.id === 'journalSearch') {
       ui.journalQuery = event.target.value;
       const child = activeChild();
@@ -3877,7 +5314,7 @@
   window.addEventListener('hashchange', () => {
     const destination = location.hash.replace('#', '');
     if (VALID_VIEWS.includes(destination)) ui.view = destination;
-    else ui.view = 'dashboard';
+    else ui.view = READ_ONLY_MODE ? 'dashboard' : 'home';
     ui.profileOpen = false;
     closeSidebar();
     renderApp({ animate: true });
@@ -3913,7 +5350,14 @@
   });
 
   document.addEventListener('visibilitychange', () => {
-    if (document.visibilityState !== 'visible') return;
+    if (document.visibilityState !== 'visible') {
+      if (ui.revealAll || ui.revealed.size) {
+        ui.revealAll = false;
+        ui.revealed.clear();
+        if (FAMILY_VIEWS.includes(ui.view) || document.body.classList.contains('modal-open')) rerenderSecrets();
+      }
+      return;
+    }
     if (READ_ONLY_MODE) refreshShareData();
     else if (CLOUD.authenticated && !CLOUD.conflict) syncNow({ auto: true });
   });
@@ -3923,12 +5367,12 @@
     const hashView = location.hash.replace('#', '');
     if (VALID_VIEWS.includes(hashView)) ui.view = hashView;
     if (READ_ONLY_MODE) {
-      if (!['dashboard', 'growth', 'milestones', 'immunizations', 'journal'].includes(ui.view)) ui.view = 'dashboard';
+      if (!TUMBUH_VIEWS.includes(ui.view)) ui.view = 'dashboard';
       initShareView();
       return;
     }
     const params = new URLSearchParams(location.search);
-    if (params.get('demo') === '1' && !state.children.length) {
+    if (params.get('demo') === '1' && !recordCount(state)) {
       state = createDemoState();
       saveState();
     }
@@ -3937,5 +5381,16 @@
     initCloud();
   }
 
+  function registerOfflineSupport() {
+    if (!('serviceWorker' in navigator)) return;
+    if (!/^https?:$/.test(location.protocol)) return;
+    window.addEventListener('load', () => {
+      navigator.serviceWorker.register('sw.js').catch((err) => {
+        console.warn('Mode offline tidak dapat diaktifkan.', err);
+      });
+    });
+  }
+
+  registerOfflineSupport();
   init();
 })();

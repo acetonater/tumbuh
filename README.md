@@ -1,14 +1,25 @@
-# Tumbuh
+# Serumah
 
-Web app untuk memantau perkembangan anak: pertumbuhan fisik, milestone, imunisasi, dan jurnal keseharian. Aplikasi tetap bisa dipakai offline, lalu disinkronkan antarperangkat lewat **Netlify Functions + Netlify Blobs**.
+Web app data keluarga: anggota, nomor dokumen penting, kontak, dan tagihan rutin, dengan **Tumbuh** (monitoring tumbuh kembang anak) sebagai salah satu hub. Bisa dibuka dari HP saat di luar rumah, tetap bisa dipakai tanpa internet, lalu disinkronkan antarperangkat lewat **Netlify Functions + Netlify Blobs**.
 
 Model aksesnya:
 
 - **Satu akun keluarga** — semua perangkat yang boleh mengedit masuk dengan kata sandi keluarga yang sama.
-- **Tautan lihat-saja** — siapa pun yang memegang tautan dapat melihat data, tetapi tidak bisa mengubah apa pun.
+- **Tautan lihat-saja** — hanya membagikan catatan Tumbuh (anak). Data keluarga **tidak pernah** ikut dibagikan.
 - **Tanpa layanan database tambahan** — cukup Netlify.
 
 ## Fitur
+
+### Rumah keluarga
+
+- **Beranda** dengan pencarian cepat (NIK, BPJS, dokter, PLN, golongan darah, dll.), kontak darurat sekali ketuk, dan daftar “Perlu perhatian”: dokumen yang habis dalam 90 hari, tagihan dekat jatuh tempo, serta ulang tahun 30 hari ke depan.
+- **Anggota**: nama, hubungan, tempat & tanggal lahir, golongan darah, alergi, kondisi kesehatan, kontak. Anggota anak bisa dihubungkan ke profil Tumbuh.
+- **Dokumen**: KK, NIK, akta, BPJS, paspor, SIM, NPWP, polis, STNK/BPKB, dll. Nomor disembunyikan sampai diketuk, ada tombol salin, tanggal kedaluwarsa, dan catatan lokasi dokumen asli. Hanya teks, bukan foto.
+- **Kontak**: kategori darurat, kesehatan, sekolah, kantor, rumah & servis; tombol telepon dan WhatsApp.
+- **Tagihan**: nomor pelanggan, atas nama, tanggal jatuh tempo, perkiraan nominal, cara bayar, autodebet, dan tanda lunas per bulan.
+
+### Hub Tumbuh kembang
+
 
 - Profil beberapa anak, usia otomatis.
 - Grafik berat, tinggi, dan lingkar kepala.
@@ -16,6 +27,7 @@ Model aksesnya:
 - Jadwal imunisasi dasar 0–18 bulan.
 - Jurnal dengan kategori, filter, dan pencarian.
 - Ekspor/impor cadangan JSON.
+- Bisa dibuka tanpa internet (service worker) dan dipasang ke layar utama ponsel seperti aplikasi.
 - Sinkronisasi otomatis setelah data disimpan, plus pemeriksaan tiap 20 detik.
 - Deteksi konflik: bila perangkat dan server sama-sama berubah, pengguna diminta memilih versi.
 - Tautan lihat-saja yang bisa dinonaktifkan atau diganti kapan saja.
@@ -26,6 +38,10 @@ Model aksesnya:
 index.html                 Halaman utama
 styles.css                 Tampilan desktop & mobile
 app.js                     Logika aplikasi, auth UI, sinkronisasi
+sw.js                      Service worker untuk mode offline
+manifest.webmanifest       Data aplikasi agar bisa dipasang di ponsel
+icons/                     Ikon aplikasi (SVG + PNG)
+robots.txt                 Menolak pengindeksan mesin pencari
 netlify.toml               Build, redirect API, header keamanan
 package.json               Dependensi fungsi
 scripts/build.mjs          Menyalin berkas statis ke dist/
@@ -41,7 +57,7 @@ README.md                  Panduan ini
 
 ### Opsi A — langsung lewat Netlify CLI (tanpa GitHub)
 
-Dari folder `D:\DEEPSEEK`:
+Dari folder proyek ini (folder yang berisi `package.json`):
 
 ```bash
 npm install
@@ -120,6 +136,17 @@ Buka alamat yang ditampilkan Netlify CLI (biasanya `http://localhost:8888`).
 
 > `.env` hanya untuk lokal dan sudah masuk `.gitignore`. Jangan mengunggahnya.
 
+## Mode offline & pasang di ponsel
+
+Setelah situs dibuka sekali lewat internet, berkas tampilannya disimpan oleh *service worker* (`sw.js`), sehingga aplikasi tetap bisa dibuka saat tidak ada sinyal. Data yang dicatat saat offline disimpan di perangkat dan dikirim otomatis begitu koneksi kembali.
+
+Untuk memasang ke layar utama:
+
+- **Android (Chrome):** menu ⋮ → **Tambahkan ke layar utama** / **Instal aplikasi**.
+- **iPhone (Safari):** tombol Bagikan → **Tambah ke Layar Utama**.
+
+Permintaan ke `/api/` tidak pernah disimpan oleh service worker, jadi data keluarga selalu diambil langsung dari server. Bila mengubah `sw.js`, naikkan nama cache (`tumbuh-shell-v1` → `v2`) agar perangkat lama memuat versi baru.
+
 ## Cara kerja sinkronisasi
 
 1. Aplikasi menyimpan data di `localStorage` agar tetap cepat dan bisa offline.
@@ -131,7 +158,7 @@ Buka alamat yang ditampilkan Netlify CLI (biasanya `http://localhost:8888`).
    - **Pakai data Netlify**, atau
    - **Timpa dengan data perangkat**.
 
-Tautan lihat-saja memakai endpoint publik `/api/shared?token=...`. Endpoint ini hanya mengembalikan data jika token cocok dan tautan sedang aktif. Tidak ada endpoint publik untuk menulis.
+Tautan lihat-saja memakai endpoint publik `/api/shared?token=...`. Endpoint ini hanya mengembalikan data jika token cocok dan tautan sedang aktif, dan **membuang seluruh data keluarga** (`household`) sebelum mengirim, sehingga yang terlihat hanya catatan Tumbuh. Tidak ada endpoint publik untuk menulis.
 
 ### Login dan sesi
 
@@ -147,10 +174,15 @@ Tautan lihat-saja memakai endpoint publik `/api/shared?token=...`. Endpoint ini 
 - Token dibuat acak 24 byte dan disimpan di Blobs.
 - Tautan bisa **dinonaktifkan** tanpa menghapus data.
 - **Ganti tautan** membuat token baru; tautan lama langsung tidak berlaku.
-- Penerima tautan dapat melihat seluruh data keluarga, **termasuk jurnal**. Perlakukan tautan seperti kunci rumah: bagikan hanya kepada orang yang dipercaya.
+- Penerima tautan dapat melihat seluruh catatan Tumbuh, **termasuk jurnal**, tetapi tidak bisa melihat anggota, dokumen, kontak, atau tagihan. Tetap bagikan hanya kepada orang yang dipercaya.
 - Halaman `?share=...` memuat data langsung dari API dan tidak menulis ke `localStorage`.
 
 ## Keamanan & privasi
+
+**Penting untuk data dokumen (NIK, KK, paspor, dll.):** data dilindungi oleh kata sandi keluarga, tetapi tidak dienkripsi end-to-end. Artinya, keamanan data bergantung pada tiga hal: kata sandi keluarga yang kuat (16+ karakter, tidak dipakai di tempat lain), akun Netlify yang aman (aktifkan verifikasi dua langkah), dan HP yang terkunci. Jangan simpan PIN, password, atau nomor kartu kredit/rekening lengkap di sini — gunakan password manager untuk itu.
+
+Nomor dokumen otomatis disembunyikan lagi saat aplikasi ditinggal ke latar belakang.
+
 
 - Data disimpan di Netlify Blobs milik project Netlify Anda, bukan di browser pengunjung tautan.
 - Data tidak dienkripsi end-to-end. Netlify sebagai penyedia infrastruktur secara teknis dapat mengakses data; ini bukan pengganti aplikasi dengan enkripsi sisi klien.

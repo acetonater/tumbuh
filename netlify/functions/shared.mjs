@@ -30,8 +30,12 @@ export default async function sharedHandler(request, context) {
       return json(404, { error: 'share_empty', message: 'Belum ada data keluarga untuk ditampilkan.' }, noIndexHeaders());
     }
 
+    // Tautan lihat-saja hanya membawa catatan tumbuh kembang anak.
+    // Data keluarga (anggota, dokumen, kontak, tagihan) tidak pernah dikirim lewat tautan publik.
+    const { household, ...tumbuhOnly } = state.data;
+    void household;
     return json(200, {
-      data: state.data,
+      data: tumbuhOnly,
       version: state.version,
       updatedAt: state.updatedAt
     }, noIndexHeaders());

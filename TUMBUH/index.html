@@ -1,0 +1,199 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="theme-color" content="#174e42" />
+  <meta name="description" content="Tumbuh — catatan pertumbuhan, milestone, imunisasi, dan jurnal perkembangan anak dalam satu tempat." />
+  <meta name="robots" content="noindex, nofollow" />
+  <meta name="color-scheme" content="light" />
+  <title>Tumbuh — Monitoring Perkembangan Anak</title>
+  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='9' fill='%23174e42'/%3E%3Cpath d='M11 24h10M16 24v-8M16 16c0-3.3 2.7-6 6-6 0 3.3-2.7 6-6 6ZM16 18c0-2.8-2.2-5-5-5 0 2.8 2.2 5 5 5Z' fill='none' stroke='%23d5e49d' stroke-width='1.8' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E" />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,500;9..144,600&family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="styles.css" />
+  <script src="app.js" defer></script>
+</head>
+<body>
+  <div class="app-shell">
+    <div class="sidebar-scrim" id="sidebarScrim" data-action="closeSidebar"></div>
+
+    <aside class="sidebar" id="sidebar" aria-label="Navigasi utama">
+      <div class="sidebar-top">
+        <a class="brand" href="#dashboard" data-nav="dashboard" aria-label="Tumbuh, ke ringkasan">
+          <span class="brand-mark">
+            <svg viewBox="0 0 24 24" aria-hidden="true"><use href="#i-sprout"></use></svg>
+          </span>
+          <span class="brand-copy">
+            <strong>tumbuh</strong>
+            <small>catatan perkembangan</small>
+          </span>
+        </a>
+        <button class="icon-btn sidebar-close" type="button" data-action="closeSidebar" aria-label="Tutup menu">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><use href="#i-x"></use></svg>
+        </button>
+      </div>
+
+      <nav class="side-nav" aria-label="Menu">
+        <p class="nav-label">Ruang tumbuh</p>
+        <a class="nav-item" href="#dashboard" data-nav="dashboard">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><use href="#i-dashboard"></use></svg>
+          <span>Ringkasan</span>
+        </a>
+        <a class="nav-item" href="#growth" data-nav="growth">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><use href="#i-chart"></use></svg>
+          <span>Tumbuh kembang</span>
+        </a>
+        <a class="nav-item" href="#milestones" data-nav="milestones">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><use href="#i-flag"></use></svg>
+          <span>Milestone</span>
+        </a>
+        <a class="nav-item" href="#immunizations" data-nav="immunizations">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><use href="#i-shield"></use></svg>
+          <span>Imunisasi</span>
+        </a>
+        <a class="nav-item" href="#journal" data-nav="journal">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><use href="#i-journal"></use></svg>
+          <span>Jurnal kecil</span>
+        </a>
+        <a class="nav-item" href="#family" data-nav="family">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><use href="#i-cloud"></use></svg>
+          <span>Keluarga</span>
+        </a>
+        <p class="nav-label nav-label-spaced">Lainnya</p>
+        <a class="nav-item" href="#settings" data-nav="settings">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><use href="#i-settings"></use></svg>
+          <span>Pengaturan</span>
+        </a>
+      </nav>
+
+      <div class="sidebar-bottom">
+        <div class="side-quote">
+          <svg class="side-quote-art" viewBox="0 0 180 110" fill="none" aria-hidden="true">
+            <path d="M22 96c28-2 50-19 59-46 4-13 3-27 0-38" stroke="rgba(236,245,232,.34)" stroke-width="1.3" stroke-linecap="round"/>
+            <path d="M81 51c-13-1-23-9-26-21 13-1 24 8 26 21Z" stroke="rgba(236,245,232,.34)" stroke-width="1.3"/>
+            <path d="M81 58c14-1 25-10 28-23-14-1-26 9-28 23Z" stroke="rgba(236,245,232,.34)" stroke-width="1.3"/>
+            <circle cx="143" cy="27" r="17" stroke="rgba(236,245,232,.2)" stroke-width="1.2"/>
+            <circle cx="143" cy="27" r="27" stroke="rgba(236,245,232,.12)" stroke-width="1.2" stroke-dasharray="2 6"/>
+            <path d="M14 98h150" stroke="rgba(236,245,232,.18)" stroke-width="1.2" stroke-linecap="round"/>
+          </svg>
+          <p>“Pelan-pelan saja.<br />Setiap anak punya waktunya.”</p>
+          <span>Catatan untuk Bunda &amp; Ayah</span>
+        </div>
+        <div class="storage-note">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><use href="#i-lock"></use></svg>
+          <span>Privat di perangkat &amp; keluarga</span>
+        </div>
+      </div>
+    </aside>
+
+    <div class="app-main">
+      <header class="topbar">
+        <div class="topbar-left">
+          <button class="icon-btn mobile-menu" type="button" data-action="openSidebar" aria-label="Buka menu">
+            <svg viewBox="0 0 24 24" aria-hidden="true"><use href="#i-menu"></use></svg>
+          </button>
+          <div class="breadcrumb" aria-label="Lokasi halaman">
+            <span>Tumbuh</span>
+            <svg viewBox="0 0 24 24" aria-hidden="true"><use href="#i-chevron-right"></use></svg>
+            <strong id="pageCrumb">Ringkasan</strong>
+          </div>
+        </div>
+        <div class="topbar-right">
+          <button class="sync-chip is-local" type="button" id="syncChip" data-action="goView" data-view="family" title="Status sinkronisasi keluarga">
+            <span class="sync-dot"></span>
+            <svg viewBox="0 0 24 24" aria-hidden="true"><use href="#i-cloud"></use></svg>
+            <span id="syncChipText">Lokal</span>
+          </button>
+          <span class="date-chip" id="headerDate">
+            <svg viewBox="0 0 24 24" aria-hidden="true"><use href="#i-calendar"></use></svg>
+            <span id="headerDateText">—</span>
+          </span>
+          <div class="profile-switch-wrap" id="profileSwitchWrap">
+            <button class="profile-switch" type="button" id="profileSwitch" data-action="toggleProfileMenu" aria-haspopup="true" aria-expanded="false">
+              <span class="avatar avatar-sm" id="switchAvatar">T</span>
+              <span class="profile-switch-copy">
+                <strong id="switchName">Profil anak</strong>
+                <small id="switchAge">Tambahkan profil</small>
+              </span>
+              <svg class="profile-chevron" viewBox="0 0 24 24" aria-hidden="true"><use href="#i-chevron-down"></use></svg>
+            </button>
+            <div class="profile-menu" id="profileMenu" hidden></div>
+          </div>
+        </div>
+      </header>
+
+      <div class="readonly-banner" id="readonlyBanner" hidden>
+        <span class="readonly-badge"><span class="readonly-dot"></span> Mode lihat saja</span>
+        <span class="readonly-updated" id="readonlyUpdated">Data keluarga</span>
+        <a class="readonly-exit" id="readonlyExit" href="./">Buka versi edit
+          <svg viewBox="0 0 24 24" aria-hidden="true"><use href="#i-arrow-right"></use></svg>
+        </a>
+      </div>
+
+      <main id="mainContent" class="main-content" tabindex="-1"></main>
+    </div>
+  </div>
+
+  <div id="modalRoot"></div>
+  <div id="toastRoot" class="toast-root" aria-live="polite" aria-atomic="true"></div>
+
+  <svg xmlns="http://www.w3.org/2000/svg" class="icon-sprite" aria-hidden="true">
+    <defs>
+      <symbol id="i-sprout" viewBox="0 0 24 24"><path d="M7 20h10"/><path d="M12 20v-8"/><path d="M12 12c0-3.3 2.7-6 6-6 0 3.3-2.7 6-6 6Z"/><path d="M12 14c0-2.8-2.2-5-5-5 0 2.8 2.2 5 5 5Z"/></symbol>
+      <symbol id="i-dashboard" viewBox="0 0 24 24"><rect width="7" height="9" x="3" y="3" rx="1.8"/><rect width="7" height="5" x="14" y="3" rx="1.8"/><rect width="7" height="9" x="14" y="12" rx="1.8"/><rect width="7" height="5" x="3" y="16" rx="1.8"/></symbol>
+      <symbol id="i-chart" viewBox="0 0 24 24"><path d="M3 3v18h18"/><path d="m7 14 4-4 4 4 5-6"/></symbol>
+      <symbol id="i-flag" viewBox="0 0 24 24"><path d="M4 15s1-1 4-1 5 2 8 2 4-1 4-1V3s-1 1-4 1-5-2-8-2-4 1-4 1z"/><path d="M4 22v-7"/></symbol>
+      <symbol id="i-shield" viewBox="0 0 24 24"><path d="M20 13c0 5-3.5 7.5-7.66 8.95a1 1 0 0 1-.67-.01C7.5 20.5 4 18 4 13V6a1 1 0 0 1 1-1c2 0 4.5-1.2 6.24-2.72a1.17 1.17 0 0 1 1.52 0C14.51 3.81 17 5 19 5a1 1 0 0 1 1 1z"/><path d="m9 12 2 2 4-4"/></symbol>
+      <symbol id="i-journal" viewBox="0 0 24 24"><path d="M4 19.5v-15A2.5 2.5 0 0 1 6.5 2H20v20H6.5a2.5 2.5 0 0 1 0-5H20"/><path d="M8 7h7"/><path d="M8 11h5"/></symbol>
+      <symbol id="i-settings" viewBox="0 0 24 24"><line x1="21" x2="14" y1="4" y2="4"/><line x1="10" x2="3" y1="4" y2="4"/><line x1="21" x2="12" y1="12" y2="12"/><line x1="8" x2="3" y1="12" y2="12"/><line x1="21" x2="16" y1="20" y2="20"/><line x1="12" x2="3" y1="20" y2="20"/><line x1="14" x2="14" y1="2" y2="6"/><line x1="8" x2="8" y1="10" y2="14"/><line x1="16" x2="16" y1="18" y2="22"/></symbol>
+      <symbol id="i-plus" viewBox="0 0 24 24"><path d="M5 12h14"/><path d="M12 5v14"/></symbol>
+      <symbol id="i-chevron-down" viewBox="0 0 24 24"><path d="m6 9 6 6 6-6"/></symbol>
+      <symbol id="i-chevron-right" viewBox="0 0 24 24"><path d="m9 18 6-6-6-6"/></symbol>
+      <symbol id="i-chevron-left" viewBox="0 0 24 24"><path d="m15 18-6-6 6-6"/></symbol>
+      <symbol id="i-arrow-right" viewBox="0 0 24 24"><path d="M5 12h14"/><path d="m12 5 7 7-7 7"/></symbol>
+      <symbol id="i-arrow-up-right" viewBox="0 0 24 24"><path d="M7 17 17 7"/><path d="M7 7h10v10"/></symbol>
+      <symbol id="i-calendar" viewBox="0 0 24 24"><rect width="18" height="18" x="3" y="4" rx="2"/><path d="M16 2v4"/><path d="M8 2v4"/><path d="M3 10h18"/><path d="M8 14h.01"/><path d="M12 14h.01"/><path d="M16 14h.01"/><path d="M8 18h.01"/><path d="M12 18h.01"/></symbol>
+      <symbol id="i-clock" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></symbol>
+      <symbol id="i-scale" viewBox="0 0 24 24"><path d="m16 16 3-8 3 8c-.87.65-1.92 1-3 1s-2.13-.35-3-1Z"/><path d="m2 16 3-8 3 8c-.87.65-1.92 1-3 1s-2.13-.35-3-1Z"/><path d="M7 21h10"/><path d="M12 3v18"/><path d="M3 7h2c2 0 5-1 7-2 2 1 5 2 7 2h2"/></symbol>
+      <symbol id="i-ruler" viewBox="0 0 24 24"><path d="M21.3 8.7 8.7 21.3a1 1 0 0 1-1.4 0l-4.6-4.6a1 1 0 0 1 0-1.4L15.3 2.7a1 1 0 0 1 1.4 0l4.6 4.6a1 1 0 0 1 0 1.4Z"/><path d="m7.5 10.5 2 2"/><path d="m10.5 7.5 2 2"/><path d="m13.5 4.5 2 2"/><path d="m4.5 13.5 2 2"/></symbol>
+      <symbol id="i-head" viewBox="0 0 24 24"><path d="M3 7V5a2 2 0 0 1 2-2h2"/><path d="M17 3h2a2 2 0 0 1 2 2v2"/><path d="M21 17v2a2 2 0 0 1-2 2h-2"/><path d="M7 21H5a2 2 0 0 1-2-2v-2"/><circle cx="12" cy="12" r="4"/></symbol>
+      <symbol id="i-trend-up" viewBox="0 0 24 24"><path d="M16 7h6v6"/><path d="m22 7-8.5 8.5-5-5L2 17"/></symbol>
+      <symbol id="i-heart" viewBox="0 0 24 24"><path d="M19 14c1.49-1.46 3-3.21 3-5.5A5.5 5.5 0 0 0 16.5 3c-1.76 0-3 .5-4.5 2-1.5-1.5-2.74-2-4.5-2A5.5 5.5 0 0 0 2 8.5c0 2.3 1.5 4.05 3 5.5l7 7Z"/></symbol>
+      <symbol id="i-star" viewBox="0 0 24 24"><path d="M11.5 2.8a.53.53 0 0 1 1 0l2.2 4.46a.53.53 0 0 0 .4.29l4.92.72a.53.53 0 0 1 .3.9l-3.56 3.47a.53.53 0 0 0-.15.47l.84 4.9a.53.53 0 0 1-.77.56l-4.4-2.31a.53.53 0 0 0-.5 0l-4.4 2.31a.53.53 0 0 1-.77-.56l.84-4.9a.53.53 0 0 0-.15-.47L3.7 9.17a.53.53 0 0 1 .3-.9l4.92-.72a.53.53 0 0 0 .4-.29Z"/></symbol>
+      <symbol id="i-sun" viewBox="0 0 24 24"><circle cx="12" cy="12" r="4"/><path d="M12 2v2"/><path d="M12 20v2"/><path d="m4.93 4.93 1.42 1.42"/><path d="m17.66 17.66 1.41 1.41"/><path d="M2 12h2"/><path d="M20 12h2"/><path d="m6.34 17.66-1.41 1.41"/><path d="m19.07 4.93-1.41 1.41"/></symbol>
+      <symbol id="i-moon" viewBox="0 0 24 24"><path d="M12 3a6 6 0 0 0 9 9 9 9 0 1 1-9-9Z"/></symbol>
+      <symbol id="i-utensils" viewBox="0 0 24 24"><path d="M3 2v7c0 1.1.9 2 2 2h4a2 2 0 0 0 2-2V2"/><path d="M7 2v20"/><path d="M21 15V2a5 5 0 0 0-5 5v6c0 1.1.9 2 2 2h3Zm0 0v7"/></symbol>
+      <symbol id="i-sparkles" viewBox="0 0 24 24"><path d="m12 3-1.9 5.1L5 10l5.1 1.9L12 17l1.9-5.1L19 10l-5.1-1.9Z"/><path d="M5 3v4"/><path d="M3 5h4"/><path d="M19 17v4"/><path d="M17 19h4"/></symbol>
+      <symbol id="i-check" viewBox="0 0 24 24"><path d="M20 6 9 17l-5-5"/></symbol>
+      <symbol id="i-x" viewBox="0 0 24 24"><path d="M18 6 6 18"/><path d="m6 6 12 12"/></symbol>
+      <symbol id="i-edit" viewBox="0 0 24 24"><path d="M12 20h9"/><path d="M16.5 3.5a2.12 2.12 0 0 1 3 3L7 19l-4 1 1-4Z"/></symbol>
+      <symbol id="i-trash" viewBox="0 0 24 24"><path d="M3 6h18"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6"/><path d="M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/><path d="M10 11v6"/><path d="M14 11v6"/></symbol>
+      <symbol id="i-download" viewBox="0 0 24 24"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><path d="m7 10 5 5 5-5"/><path d="M12 15V3"/></symbol>
+      <symbol id="i-upload" viewBox="0 0 24 24"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><path d="m17 8-5-5-5 5"/><path d="M12 3v12"/></symbol>
+      <symbol id="i-lock" viewBox="0 0 24 24"><rect width="18" height="11" x="3" y="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></symbol>
+      <symbol id="i-info" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M12 16v-4"/><path d="M12 8h.01"/></symbol>
+      <symbol id="i-menu" viewBox="0 0 24 24"><path d="M4 6h16"/><path d="M4 12h16"/><path d="M4 18h16"/></symbol>
+      <symbol id="i-baby" viewBox="0 0 24 24"><path d="M9 12h.01"/><path d="M15 12h.01"/><path d="M10 16c.5.3 1.2.5 2 .5s1.5-.2 2-.5"/><path d="M19 6.3a9 9 0 0 1 1.8 3.9 2 2 0 0 1 0 3.6 9 9 0 0 1-17.6 0 2 2 0 0 1 0-3.6A9 9 0 0 1 12 3c2 0 3.5 1.1 3.5 2.5s-.9 2.5-2 2.5c-.8 0-1.5-.4-1.5-1"/></symbol>
+      <symbol id="i-more" viewBox="0 0 24 24"><circle cx="5" cy="12" r="1"/><circle cx="12" cy="12" r="1"/><circle cx="19" cy="12" r="1"/></symbol>
+      <symbol id="i-file" viewBox="0 0 24 24"><path d="M15 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7Z"/><path d="M14 2v5h5"/><path d="M8 13h8"/><path d="M8 17h5"/></symbol>
+      <symbol id="i-search" viewBox="0 0 24 24"><circle cx="11" cy="11" r="7"/><path d="m21 21-4.3-4.3"/></symbol>
+      <symbol id="i-award" viewBox="0 0 24 24"><circle cx="12" cy="8" r="6"/><path d="M15.5 13.5 17 22l-5-3-5 3 1.5-8.5"/></symbol>
+      <symbol id="i-activity" viewBox="0 0 24 24"><path d="M22 12h-4l-3 9L9 3l-3 9H2"/></symbol>
+      <symbol id="i-message" viewBox="0 0 24 24"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/><path d="M8 8h8"/><path d="M8 12h5"/></symbol>
+      <symbol id="i-cloud" viewBox="0 0 24 24"><path d="M17.5 19H9a7 7 0 1 1 6.71-9h1.79a4.5 4.5 0 1 1 0 9Z"/></symbol>
+      <symbol id="i-cloud-off" viewBox="0 0 24 24"><path d="m2 2 20 20"/><path d="M5.8 5.8A7 7 0 0 0 9 19h8.5a4.5 4.5 0 0 0 4.3-3.1"/><path d="M17.5 19H9a7 7 0 0 1-3.2-13.2"/></symbol>
+      <symbol id="i-users" viewBox="0 0 24 24"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M22 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></symbol>
+      <symbol id="i-refresh" viewBox="0 0 24 24"><path d="M3 12a9 9 0 0 1 15-6.7L21 8"/><path d="M21 3v5h-5"/><path d="M21 12a9 9 0 0 1-15 6.7L3 16"/><path d="M3 21v-5h5"/></symbol>
+      <symbol id="i-copy" viewBox="0 0 24 24"><rect width="14" height="14" x="8" y="8" rx="2"/><path d="M4 16c-1.1 0-2-.9-2-2V4c0-1.1.9-2 2-2h10c1.1 0 2 .9 2 2"/></symbol>
+      <symbol id="i-log-out" viewBox="0 0 24 24"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><path d="m16 17 5-5-5-5"/><path d="M21 12H9"/></symbol>
+      <symbol id="i-link" viewBox="0 0 24 24"><path d="M10 13a5 5 0 0 0 7.5.5l3-3a5 5 0 0 0-7-7l-1.7 1.7"/><path d="M14 11a5 5 0 0 0-7.5-.5l-3 3a5 5 0 0 0 7 7l1.7-1.7"/></symbol>
+      <symbol id="i-cloud-check" viewBox="0 0 24 24"><path d="M17.5 19H9a7 7 0 1 1 6.71-9h1.79a4.5 4.5 0 1 1 0 9Z"/><path d="m9 13 2 2 4-4"/></symbol>
+      <symbol id="i-log-in" viewBox="0 0 24 24"><path d="M15 3h4a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2h-4"/><path d="m10 17 5-5-5-5"/><path d="M15 12H3"/></symbol>
+      <symbol id="i-server" viewBox="0 0 24 24"><rect width="20" height="8" x="2" y="2" rx="2"/><rect width="20" height="8" x="2" y="14" rx="2"/><path d="M6 6h.01"/><path d="M6 18h.01"/></symbol>
+      <symbol id="i-eye" viewBox="0 0 24 24"><path d="M2.1 12a10.9 10.9 0 0 1 19.8 0 10.9 10.9 0 0 1-19.8 0Z"/><circle cx="12" cy="12" r="3"/></symbol>
+    </defs>
+  </svg>
+</body>
+</html>

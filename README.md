@@ -12,11 +12,15 @@ Model aksesnya:
 
 ### Rumah keluarga
 
-- **Beranda** dengan pencarian cepat (NIK, BPJS, dokter, PLN, golongan darah, dll.), kontak darurat sekali ketuk, dan daftar “Perlu perhatian”: dokumen yang habis dalam 90 hari, tagihan dekat jatuh tempo, serta ulang tahun 30 hari ke depan.
-- **Anggota**: nama, hubungan, tempat & tanggal lahir, golongan darah, alergi, kondisi kesehatan, kontak. Anggota anak bisa dihubungkan ke profil Tumbuh.
+- **Beranda** dengan pencarian cepat (NIK, BPJS, dokter, PLN, golongan darah, dll.), kartu anggota keluarga dengan pintasan ke Anggota/Dokumen/Tagihan, dan daftar “Perlu perhatian”: dokumen yang habis dalam 90 hari, tagihan dekat jatuh tempo, jadwal perawatan, garansi, serta ulang tahun 30 hari ke depan.
+- **Anggota**: nama, foto, hubungan, tempat & tanggal lahir, golongan darah, alergi, kondisi kesehatan, obat rutin, kontak. Anggota anak bisa dihubungkan ke profil Tumbuh.
 - **Dokumen**: KK, NIK, akta, BPJS, paspor, SIM, NPWP, polis, STNK/BPKB, dll. Nomor disembunyikan sampai diketuk, ada tombol salin, tanggal kedaluwarsa, dan catatan lokasi dokumen asli. Hanya teks, bukan foto.
 - **Kontak**: kategori darurat, kesehatan, sekolah, kantor, rumah & servis; tombol telepon dan WhatsApp.
 - **Tagihan**: nomor pelanggan, atas nama, tanggal jatuh tempo, perkiraan nominal, cara bayar, autodebet, dan tanda lunas per bulan.
+- **Belanja**: daftar belanja bersama (bukan bulanan) yang cepat ditambah dan dihapus, dengan saran barang yang sering dibeli.
+- **Perawatan**: jadwal servis rumah dan kendaraan dengan pengingat.
+- **Garansi**: masa garansi barang dan pengingat sebelum habis.
+- **Mode gelap** (otomatis/terang/gelap) dan latar garis kontur.
 
 ### Hub Tumbuh kembang
 
@@ -37,6 +41,8 @@ Model aksesnya:
 ```text
 index.html                 Halaman utama
 styles.css                 Tampilan desktop & mobile
+theme.js                   Mode terang/gelap (dimuat lebih awal)
+contour.svg                Pola garis kontur latar belakang
 app.js                     Logika aplikasi, auth UI, sinkronisasi
 sw.js                      Service worker untuk mode offline
 manifest.webmanifest       Data aplikasi agar bisa dipasang di ponsel

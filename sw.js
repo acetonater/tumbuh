@@ -1,12 +1,14 @@
 /* Serumah — service worker untuk mode offline.
    Menyimpan berkas tampilan aplikasi agar tetap bisa dibuka tanpa internet.
    Permintaan ke /api/ TIDAK pernah disimpan: data keluarga selalu diambil langsung dari server. */
-const CACHE = 'tumbuh-shell-v2';
+const CACHE = 'tumbuh-shell-v4';
 const SHELL = [
   './',
   'index.html',
   'styles.css',
   'app.js',
+  'theme.js',
+  'contour.svg',
   'manifest.webmanifest',
   'icons/icon.svg',
   'icons/icon-192.png',

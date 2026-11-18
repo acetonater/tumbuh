@@ -6,13 +6,16 @@
      ========================================================= */
 
   const STORAGE_KEY = 'tumbuh-app-v1';
-  const VALID_VIEWS = ['home', 'members', 'documents', 'contacts', 'bills', 'dashboard', 'growth', 'milestones', 'immunizations', 'journal', 'family', 'settings'];
+  const VALID_VIEWS = ['home', 'shopping', 'members', 'documents', 'contacts', 'bills', 'upkeep', 'warranty', 'dashboard', 'growth', 'milestones', 'immunizations', 'journal', 'family', 'settings'];
   const VIEW_META = {
     home: { crumb: 'Beranda', title: 'Beranda' },
     members: { crumb: 'Anggota', title: 'Anggota' },
     documents: { crumb: 'Dokumen', title: 'Dokumen' },
     contacts: { crumb: 'Kontak', title: 'Kontak' },
     bills: { crumb: 'Tagihan', title: 'Tagihan' },
+    upkeep: { crumb: 'Perawatan', title: 'Perawatan' },
+    warranty: { crumb: 'Garansi', title: 'Garansi' },
+    shopping: { crumb: 'Belanja', title: 'Belanja' },
     dashboard: { crumb: 'Ringkasan anak', title: 'Ringkasan anak' },
     growth: { crumb: 'Tumbuh kembang', title: 'Tumbuh kembang' },
     milestones: { crumb: 'Milestone', title: 'Milestone' },
@@ -34,11 +37,11 @@
   };
 
   const DOMAINS = {
-    gross: { label: 'Motorik kasar', icon: 'activity', color: '#B94E32', tint: '#FBE8DF' },
-    fine: { label: 'Motorik halus', icon: 'sparkles', color: '#926915', tint: '#FBF0D4' },
-    language: { label: 'Bahasa', icon: 'message', color: '#174E42', tint: '#E2EEE7' },
-    social: { label: 'Sosial & emosional', icon: 'heart', color: '#65558F', tint: '#EEE9F7' },
-    cognitive: { label: 'Kognitif', icon: 'head', color: '#38677E', tint: '#E5F0F4' }
+    gross: { label: 'Motorik kasar', icon: 'activity', color: 'var(--coral-deep)', tint: 'var(--coral-soft)' },
+    fine: { label: 'Motorik halus', icon: 'sparkles', color: 'var(--gold-ink)', tint: 'var(--gold-soft)' },
+    language: { label: 'Bahasa', icon: 'message', color: 'var(--forest)', tint: 'var(--forest-soft)' },
+    social: { label: 'Sosial & emosional', icon: 'heart', color: 'var(--lilac-ink)', tint: 'var(--lilac-soft)' },
+    cognitive: { label: 'Kognitif', icon: 'head', color: 'var(--blue-ink)', tint: 'var(--blue-soft)' }
   };
   const DOMAIN_KEYS = Object.keys(DOMAINS);
 
@@ -153,9 +156,9 @@
   ];
 
   const METRICS = {
-    weight: { key: 'weight', label: 'Berat badan', short: 'Berat', unit: 'kg', icon: 'scale', color: '#E67655', tint: '#FBE8DF', decimals: 1 },
-    height: { key: 'height', label: 'Tinggi badan', short: 'Tinggi', unit: 'cm', icon: 'ruler', color: '#174E42', tint: '#E2EEE7', decimals: 1 },
-    head: { key: 'head', label: 'Lingkar kepala', short: 'Lingkar kepala', unit: 'cm', icon: 'head', color: '#8273AD', tint: '#EEE9F7', decimals: 1 }
+    weight: { key: 'weight', label: 'Berat badan', short: 'Berat', unit: 'kg', icon: 'scale', color: 'var(--coral)', tint: 'var(--coral-soft)', decimals: 1 },
+    height: { key: 'height', label: 'Tinggi badan', short: 'Tinggi', unit: 'cm', icon: 'ruler', color: 'var(--forest)', tint: 'var(--forest-soft)', decimals: 1 },
+    head: { key: 'head', label: 'Lingkar kepala', short: 'Lingkar kepala', unit: 'cm', icon: 'head', color: 'var(--lilac)', tint: 'var(--lilac-soft)', decimals: 1 }
   };
 
   /* =========================================================
@@ -202,11 +205,11 @@
     lainnya: { label: 'Lainnya', pill: '' }
   };
 
-  const FAMILY_VIEWS = ['home', 'members', 'documents', 'contacts', 'bills'];
+  const FAMILY_VIEWS = ['home', 'shopping', 'members', 'documents', 'contacts', 'bills', 'upkeep', 'warranty'];
   const TUMBUH_VIEWS = ['dashboard', 'growth', 'milestones', 'immunizations', 'journal'];
 
   function defaultHousehold() {
-    return { name: '', members: [], documents: [], contacts: [], bills: [] };
+    return { name: '', members: [], documents: [], contacts: [], bills: [], upkeep: [], warranties: [], shopping: [], shoppingRecent: [] };
   }
 
   function cleanText(value, max) {
@@ -232,6 +235,7 @@
         return {
           id,
           name: cleanText(m.name, 80),
+          photo: isPhotoData(m.photo) ? m.photo : '',
           nickname: cleanText(m.nickname, 30),
           relation: RELATIONS.includes(m.relation) ? m.relation : 'Lainnya',
           sex: m.sex === 'P' ? 'P' : (m.sex === 'L' ? 'L' : ''),
@@ -240,6 +244,7 @@
           bloodType: BLOOD_TYPES.includes(m.bloodType) ? m.bloodType : '',
           allergies: cleanText(m.allergies, 300),
           medical: cleanText(m.medical, 600),
+          medication: cleanText(m.medication, 300),
           phone: cleanText(m.phone, 30),
           email: cleanText(m.email, 100),
           occupation: cleanText(m.occupation, 100),
@@ -302,6 +307,10 @@
           createdAt: b.createdAt || new Date().toISOString()
         };
       });
+    next.upkeep = normalizeUpkeep(raw.upkeep);
+    next.warranties = normalizeWarranties(raw.warranties);
+    next.shopping = normalizeShopping(raw.shopping);
+    next.shoppingRecent = normalizeRecent(raw.shoppingRecent);
     return next;
   }
 
@@ -335,6 +344,24 @@
         { id: 'demo-b-pdam', name: 'PAM Jaya', category: 'air', customerNumber: '00000002', dueDay: 20, amount: 120000 },
         { id: 'demo-b-net', name: 'Internet rumah', category: 'internet', customerNumber: '1220000003', dueDay: 5, amount: 385000, autopay: true },
         { id: 'demo-b-ipl', name: 'Iuran lingkungan', category: 'iuran', dueDay: 10, amount: 150000, payMethod: 'Transfer ke bendahara RT' }
+      ],
+      warranties: [
+        { id: 'demo-w-kulkas', name: 'Kulkas', model: 'Sharp 2 pintu', serial: 'SJ0000123456', store: 'Electronic City', purchaseDate: addMonthsISO(today, -11), months: 12, price: 4200000, storedAt: 'Map garansi, laci dapur', servicePhone: '1500-000' },
+        { id: 'demo-w-laptop', name: 'Laptop kerja', model: 'Lenovo ThinkPad', serial: 'PF0ABCD1', store: 'Tokopedia', purchaseDate: addMonthsISO(today, -6), months: 36, storedAt: 'Email pembelian + dus laptop' },
+        { id: 'demo-w-blender', name: 'Blender', model: 'Philips HR2115', purchaseDate: addMonthsISO(today, -30), months: 24 }
+      ],
+      shopping: [
+        { id: 'demo-s-1', text: 'Telur 1 kg' },
+        { id: 'demo-s-2', text: 'Susu UHT Raka (6 kotak)' },
+        { id: 'demo-s-3', text: 'Sabun cuci piring' },
+        { id: 'demo-s-4', text: 'Popok ukuran L', done: true }
+      ],
+      shoppingRecent: ['Beras 5 kg', 'Minyak goreng 2 L', 'Roti tawar', 'Pisang', 'Tisu'],
+      upkeep: [
+        { id: 'demo-u-ac', name: 'Servis AC', asset: 'AC kamar utama', category: 'rumah', intervalMonths: 4, lastDone: addMonthsISO(today, -4), vendor: 'Pak Joko AC', vendorPhone: '0818-0000-7777', cost: 150000, note: 'Freon R32, cuci indoor + outdoor', log: [{ date: addMonthsISO(today, -8), cost: 150000 }, { date: addMonthsISO(today, -4), cost: 150000 }] },
+        { id: 'demo-u-oli', name: 'Ganti oli', asset: 'Motor Vario B 1234 XX', category: 'kendaraan', intervalMonths: 2, lastDone: addMonthsISO(today, -1), vendor: 'Bengkel resmi', cost: 65000, note: 'Oli 10W-30, 0,8 liter', log: [{ date: addMonthsISO(today, -1), cost: 65000 }] },
+        { id: 'demo-u-stnk', name: 'Pajak STNK tahunan', asset: 'Motor Vario B 1234 XX', category: 'kendaraan', intervalMonths: 12, dueDate: addMonthsISO(today, 5), cost: 280000, note: 'Bisa lewat aplikasi SIGNAL' },
+        { id: 'demo-u-toren', name: 'Kuras toren air', asset: 'Toren atap', category: 'rumah', intervalMonths: 6, lastDone: addMonthsISO(today, -5) }
       ]
     });
   }
@@ -342,11 +369,15 @@
   function removeDemoHousehold() {
     const h = state.household;
     const isDemo = (item) => String(item.id).startsWith('demo-');
-    const had = h.members.some(isDemo) || h.documents.some(isDemo) || h.contacts.some(isDemo) || h.bills.some(isDemo);
+    const had = h.members.some(isDemo) || h.documents.some(isDemo) || h.contacts.some(isDemo) || h.bills.some(isDemo) || (h.upkeep || []).some(isDemo) || (h.warranties || []).some(isDemo) || (h.shopping || []).some(isDemo);
     h.members = h.members.filter((x) => !isDemo(x));
     h.documents = h.documents.filter((x) => !isDemo(x));
     h.contacts = h.contacts.filter((x) => !isDemo(x));
     h.bills = h.bills.filter((x) => !isDemo(x));
+    h.upkeep = (h.upkeep || []).filter((x) => !isDemo(x));
+    h.warranties = (h.warranties || []).filter((x) => !isDemo(x));
+    h.shopping = (h.shopping || []).filter((x) => !isDemo(x));
+    if (had) h.shoppingRecent = [];
     if (had && h.name === 'Pratama' && !h.members.length) h.name = '';
     return had;
   }
@@ -468,6 +499,32 @@
         });
       }
     });
+    (hh().upkeep || []).forEach((item) => {
+      const st = upkeepStatus(item);
+      if (st.days == null || st.days > 14) return;
+      items.push({
+        sort: st.days,
+        tone: st.days <= 0 ? 'coral' : 'gold',
+        icon: UPKEEP_CATS[item.category].icon,
+        title: `${item.name}${item.asset ? ` · ${item.asset}` : ''}`,
+        sub: st.days < 0 ? `Terlambat ${-st.days} hari · ${formatDate(st.next)}` : (st.days === 0 ? 'Jadwalnya hari ini' : `${st.days} hari lagi · ${formatDate(st.next)}`),
+        action: 'viewUpkeep',
+        id: item.id
+      });
+    });
+    (hh().warranties || []).forEach((w) => {
+      const st = warrantyStatus(w);
+      if (st.days == null || st.days < 0 || st.days > 30) return;
+      items.push({
+        sort: st.days,
+        tone: 'gold',
+        icon: 'tag',
+        title: `Garansi ${w.name}`,
+        sub: `${st.days === 0 ? 'Habis hari ini' : `Habis ${st.days} hari lagi`} · ${formatDate(st.end)}`,
+        action: 'viewWarranty',
+        id: w.id
+      });
+    });
     hh().members.forEach((member) => {
       const b = nextBirthday(member.birthDate);
       if (b && b.days <= 30) {
@@ -485,8 +542,90 @@
     return items.sort((a, b) => a.sort - b.sort);
   }
 
+  const PHOTO_MAX_CHARS = 90000;
+
+  function isPhotoData(value) {
+    return typeof value === 'string' && value.length <= PHOTO_MAX_CHARS && /^data:image\/(jpeg|webp);base64,[A-Za-z0-9+/=]+$/.test(value);
+  }
+
+  function photoImg(photo) {
+    return `<img src="${esc(photo)}" alt="" loading="lazy" decoding="async" />`;
+  }
+
   function memberAvatar(member, size = '') {
+    if (member.photo) return `<span class="avatar has-photo ${size}" style="background:${esc(member.color)}">${photoImg(member.photo)}</span>`;
     return `<span class="avatar ${size}" style="background:${esc(member.color)}">${esc(initials(member.name))}</span>`;
+  }
+
+  function photoForChild(child) {
+    if (!child || !state.household) return '';
+    const member = state.household.members.find((m) => m.childId === child.id && m.photo);
+    return member ? member.photo : '';
+  }
+
+  async function resizePhoto(file) {
+    if (!file || !/^image\//.test(file.type || 'image/')) throw new Error('not_image');
+    if (file.size > 25 * 1024 * 1024) throw new Error('too_big');
+    let source;
+    try {
+      source = await createImageBitmap(file);
+    } catch (err) {
+      source = await new Promise((resolve, reject) => {
+        const url = URL.createObjectURL(file);
+        const img = new Image();
+        img.onload = () => { URL.revokeObjectURL(url); resolve(img); };
+        img.onerror = () => { URL.revokeObjectURL(url); reject(new Error('unreadable')); };
+        img.src = url;
+      });
+    }
+    const w = source.width;
+    const h = source.height;
+    const side = Math.min(w, h);
+    const size = 256;
+    const canvas = document.createElement('canvas');
+    canvas.width = size;
+    canvas.height = size;
+    const ctx = canvas.getContext('2d');
+    ctx.imageSmoothingQuality = 'high';
+    ctx.drawImage(source, (w - side) / 2, (h - side) / 2, side, side, 0, 0, size, size);
+    if (source.close) source.close();
+    for (const q of [0.82, 0.72, 0.6, 0.5]) {
+      const data = canvas.toDataURL('image/jpeg', q);
+      if (data.length <= PHOTO_MAX_CHARS) return data;
+    }
+    throw new Error('too_big');
+  }
+
+  function setPhotoPreview(photo) {
+    const input = $('#mPhoto');
+    const preview = $('#mPhotoPreview');
+    const remove = $('#mPhotoRemove');
+    const pick = $('#mPhotoPick');
+    if (!input || !preview) return;
+    input.value = photo || '';
+    const nameField = $('#mName');
+    const colorField = $('#memberForm input[name="color"]:checked');
+    preview.style.background = colorField ? colorField.value : 'var(--forest)';
+    preview.innerHTML = photo ? photoImg(photo) : esc(initials((nameField && nameField.value) || '?'));
+    preview.classList.toggle('has-photo', Boolean(photo));
+    if (remove) remove.hidden = !photo;
+    if (pick) pick.lastChild.textContent = photo ? ' Ganti foto' : ' Pilih foto';
+  }
+
+  function pickMemberPhoto() {
+    const input = document.createElement('input');
+    input.type = 'file';
+    input.accept = 'image/*';
+    input.addEventListener('change', async () => {
+      const file = input.files && input.files[0];
+      if (!file) return;
+      try {
+        setPhotoPreview(await resizePhoto(file));
+      } catch (err) {
+        toast(err.message === 'too_big' ? 'Foto terlalu besar. Coba foto lain.' : 'Foto tidak bisa dibaca. Gunakan format JPG atau PNG.', 'error');
+      }
+    });
+    input.click();
   }
 
   function revealButton(id, revealed) {
@@ -523,20 +662,22 @@
     const has = (...parts) => parts.join(' ').toLowerCase().includes(q);
     const h = hh();
     return {
-      members: h.members.filter((m) => has(m.name, m.nickname, m.relation, m.phone, m.bloodType, m.allergies, m.occupation, m.notes)),
+      members: h.members.filter((m) => has(m.name, m.nickname, m.relation, m.phone, m.bloodType, m.allergies, m.medication, m.medical, m.occupation, m.notes)),
       documents: h.documents.filter((d) => {
         const member = getMember(d.memberId);
         return has(docTypeLabel(d), DOC_TYPES[d.type].short, d.number, d.issuer, d.storedAt, d.note, member ? `${member.name} ${member.nickname}` : 'keluarga');
       }),
       contacts: h.contacts.filter((c) => has(c.name, c.role, CONTACT_CATS[c.category].label, c.phone, c.phone2, c.address, c.note)),
-      bills: h.bills.filter((b) => has(b.name, BILL_CATS[b.category].label, b.customerNumber, b.accountName, b.payMethod, b.note))
+      bills: h.bills.filter((b) => has(b.name, BILL_CATS[b.category].label, b.customerNumber, b.accountName, b.payMethod, b.note)),
+      upkeep: (h.upkeep || []).filter((u) => has(u.name, u.asset, UPKEEP_CATS[u.category].label, u.vendor, u.vendorPhone, u.note)),
+      warranties: (h.warranties || []).filter((w) => has(w.name, w.model, w.serial, w.store, w.storedAt, w.note, 'garansi'))
     };
   }
 
   function homeResultsHTML() {
     const r = searchHousehold(ui.homeQuery);
     if (!r) return '';
-    const total = r.members.length + r.documents.length + r.contacts.length + r.bills.length;
+    const total = r.members.length + r.documents.length + r.contacts.length + r.bills.length + r.upkeep.length + r.warranties.length;
     if (!total) {
       return `<div class="card search-results"><p class="search-none">${ic('search')} Tidak ada yang cocok dengan “${esc(ui.homeQuery.trim())}”.</p></div>`;
     }
@@ -561,6 +702,14 @@
         <button class="search-row" type="button" data-action="viewBill" data-id="${esc(b.id)}">
           <span class="row-icon">${ic('receipt')}</span><span><strong>${esc(b.name)}</strong><small>${b.customerNumber ? `No. pelanggan ${esc(b.customerNumber)}` : esc(BILL_CATS[b.category].label)}</small></span>${ic('chevron-right')}
         </button>`))}
+      ${section('Perawatan', r.upkeep.map((u) => `
+        <button class="search-row" type="button" data-action="viewUpkeep" data-id="${esc(u.id)}">
+          <span class="row-icon">${ic(UPKEEP_CATS[u.category].icon)}</span><span><strong>${esc(u.name)}</strong><small>${esc(u.asset || UPKEEP_CATS[u.category].label)} · ${esc(upkeepStatus(u).label)}</small></span>${ic('chevron-right')}
+        </button>`))}
+      ${section('Garansi', r.warranties.map((w) => `
+        <button class="search-row" type="button" data-action="viewWarranty" data-id="${esc(w.id)}">
+          <span class="row-icon">${ic('tag')}</span><span><strong>${esc(w.name)}</strong><small>${esc(w.model || 'Garansi')} · ${esc(warrantyStatus(w).label)}</small></span>${ic('chevron-right')}
+        </button>`))}
     </div>`;
   }
 
@@ -570,16 +719,14 @@
     const h = hh();
     const familyName = h.name ? `Keluarga ${h.name}` : 'Rumah keluarga';
     const attention = attentionItems();
-    const emergency = h.contacts.filter((c) => c.pinned || c.category === 'darurat').slice(0, 4);
     const empty = !h.members.length && !h.documents.length && !h.contacts.length && !h.bills.length;
     const hour = new Date().getHours();
     const greet = hour < 11 ? 'Selamat pagi' : hour < 15 ? 'Selamat siang' : hour < 18 ? 'Selamat sore' : 'Selamat malam';
 
-    const tiles = [
-      { view: 'members', icon: 'users', label: 'Anggota', count: h.members.length, unit: 'orang', tint: 'var(--forest-soft)', color: 'var(--forest)' },
-      { view: 'documents', icon: 'id-card', label: 'Dokumen', count: h.documents.length, unit: 'nomor', tint: 'var(--blue-soft)', color: '#38677e' },
-      { view: 'contacts', icon: 'phone', label: 'Kontak', count: h.contacts.length, unit: 'kontak', tint: 'var(--coral-soft)', color: 'var(--coral-deep)' },
-      { view: 'bills', icon: 'receipt', label: 'Tagihan', count: h.bills.length, unit: 'rutin', tint: 'var(--gold-soft)', color: '#926915' }
+    const shortcuts = [
+      { view: 'members', icon: 'users', label: 'Anggota', count: h.members.length, tone: 'green' },
+      { view: 'documents', icon: 'id-card', label: 'Dokumen', count: h.documents.length, tone: 'blue' },
+      { view: 'bills', icon: 'receipt', label: 'Tagihan', count: h.bills.length, tone: 'gold' }
     ];
 
     const children = state.children;
@@ -637,21 +784,34 @@
           <button class="text-link" type="button" data-action="loadDemo" style="margin-top:14px">${ic('sparkles')} Atau lihat dulu dengan data contoh ${ic('arrow-right')}</button>
         </section>` : ''}
 
-      <div class="home-tiles">
-        ${tiles.map((t) => `
-          <button class="card home-tile" type="button" data-action="goView" data-view="${t.view}">
-            <span class="feature-icon" style="--tint:${t.tint};--color:${t.color}">${ic(t.icon)}</span>
-            <span class="home-tile-copy"><strong>${t.count}</strong><small>${t.label}</small></span>
-            ${ic('chevron-right', 'home-tile-arrow')}
-          </button>`).join('')}
+      <div class="home-top">
+        <section class="card card-pad home-members">
+          <div class="card-head">
+            <div><h2 class="card-title">Anggota keluarga</h2><p class="card-sub">${h.members.length ? 'Ketuk untuk melihat data lengkap, alergi, dan obat rutin.' : 'Belum ada anggota.'}</p></div>
+            ${h.members.length ? `<button class="text-link" type="button" data-action="goView" data-view="members">Kelola ${ic('arrow-right')}</button>` : ''}
+          </div>
+          ${h.members.length ? `<div class="member-strip">${h.members.map((m) => `
+            <button class="member-chip" type="button" data-action="viewMember" data-id="${esc(m.id)}">
+              ${memberAvatar(m)}
+              <strong>${esc(memberShortName(m))}</strong>
+              <small>${esc(m.relation)}${m.bloodType ? ` · ${esc(m.bloodType)}` : ''}</small>
+              ${m.allergies ? `<span class="pill coral mini">${ic('alert')} Alergi</span>` : ''}
+            </button>`).join('')}</div>` : `<button class="btn btn-soft btn-sm" type="button" data-action="addMember">${ic('plus')} Tambah anggota</button>`}
+        </section>
+        <nav class="home-shortcuts" aria-label="Pintasan">
+          ${shortcuts.map((t) => `
+            <button class="home-shortcut" type="button" data-action="goView" data-view="${t.view}" aria-label="${t.label}: ${t.count}">
+              <span class="home-shortcut-dot tone-${t.tone}">${ic(t.icon)}<b>${t.count}</b></span>
+              <small>${t.label}</small>
+            </button>`).join('')}
+        </nav>
       </div>
 
-      <div class="home-grid">
-        <section class="card card-pad">
+        <section class="card card-pad section-gap">
           <div class="card-head">
             <div>
               <h2 class="card-title">Perlu perhatian</h2>
-              <p class="card-sub">Dokumen yang hampir habis, tagihan dekat jatuh tempo, dan ulang tahun.</p>
+              <p class="card-sub">Dokumen hampir habis, tagihan, perawatan, garansi, dan ulang tahun.</p>
             </div>
             ${attention.length ? `<span class="pill coral">${attention.length}</span>` : ''}
           </div>
@@ -662,38 +822,6 @@
               ${ic('chevron-right')}
             </button>`).join('')}</div>` : `<div class="attn-calm">${ic('check')} Semua aman untuk 30 hari ke depan.</div>`}
         </section>
-
-        <section class="card card-pad">
-          <div class="card-head">
-            <div>
-              <h2 class="card-title">Kontak darurat</h2>
-              <p class="card-sub">Sekali ketuk untuk menelepon.</p>
-            </div>
-            <button class="text-link" type="button" data-action="goView" data-view="contacts">Semua ${ic('arrow-right')}</button>
-          </div>
-          ${emergency.length ? `<div class="quick-contacts">${emergency.map((c) => `
-            <div class="quick-contact">
-              <span class="row-icon tone-${CONTACT_CATS[c.category].pill}">${ic(CONTACT_CATS[c.category].icon)}</span>
-              <span class="quick-contact-copy"><strong>${esc(c.name)}</strong><small>${esc(c.role || CONTACT_CATS[c.category].label)}</small></span>
-              ${c.phone ? `<a class="btn btn-primary btn-sm" href="${esc(telHref(c.phone))}">${ic('phone')} Telepon</a>` : ''}
-            </div>`).join('')}</div>` : `<p class="hub-empty">Tandai kontak sebagai <strong>penting</strong> agar muncul di sini. <button class="text-link" type="button" data-action="addContact">Tambah kontak ${ic('arrow-right')}</button></p>`}
-        </section>
-      </div>
-
-      ${h.members.length ? `
-        <section class="card card-pad section-gap">
-          <div class="card-head">
-            <div><h2 class="card-title">Anggota keluarga</h2><p class="card-sub">Ketuk untuk melihat data lengkap dan dokumennya.</p></div>
-            <button class="text-link" type="button" data-action="goView" data-view="members">Kelola ${ic('arrow-right')}</button>
-          </div>
-          <div class="member-strip">${h.members.map((m) => `
-            <button class="member-chip" type="button" data-action="viewMember" data-id="${esc(m.id)}">
-              ${memberAvatar(m)}
-              <strong>${esc(memberShortName(m))}</strong>
-              <small>${esc(m.relation)}${m.bloodType ? ` · ${esc(m.bloodType)}` : ''}</small>
-              ${m.allergies ? `<span class="pill coral mini">${ic('alert')} Alergi</span>` : ''}
-            </button>`).join('')}</div>
-        </section>` : ''}
 
       <div class="section-gap">${tumbuhCard}</div>`;
   }
@@ -733,6 +861,7 @@
               ${m.birthDate ? `<div><dt>Lahir</dt><dd>${esc(m.birthPlace ? `${m.birthPlace}, ` : '')}${esc(formatDateLong(m.birthDate))}</dd></div>` : ''}
               <div><dt>Gol. darah</dt><dd>${m.bloodType ? `<span class="blood">${esc(m.bloodType)}</span>` : '<span class="muted">Belum diisi</span>'}</dd></div>
               ${m.allergies ? `<div class="is-alert"><dt>Alergi</dt><dd>${esc(m.allergies)}</dd></div>` : ''}
+              ${m.medication ? `<div><dt>Obat rutin</dt><dd>${esc(m.medication)}</dd></div>` : ''}
               ${m.phone ? `<div><dt>Telepon</dt><dd><a href="${esc(telHref(m.phone))}">${esc(m.phone)}</a></dd></div>` : ''}
             </dl>
             <div class="member-card-foot">
@@ -761,6 +890,7 @@
           ${row('Jenis kelamin', m.sex ? (m.sex === 'L' ? 'Laki-laki' : 'Perempuan') : '')}
           ${row('Gol. darah', m.bloodType ? `<span class="blood">${esc(m.bloodType)}</span>` : '')}
           ${row('Alergi', esc(m.allergies), 'is-alert')}
+          ${row('Obat rutin', esc(m.medication))}
           ${row('Kesehatan', esc(m.medical))}
           ${row('Telepon', m.phone ? `<a href="${esc(telHref(m.phone))}">${esc(m.phone)}</a>` : '')}
           ${row('Email', m.email ? `<a href="mailto:${esc(m.email)}">${esc(m.email)}</a>` : '')}
@@ -800,6 +930,18 @@
         <form id="memberForm" novalidate autocomplete="off">
           <input type="hidden" name="id" value="${m ? esc(m.id) : ''}" />
           <div class="form-grid">
+            <div class="form-field full photo-field">
+              <input type="hidden" id="mPhoto" name="photo" value="${m && m.photo ? esc(m.photo) : ''}" />
+              <span class="avatar avatar-xl photo-preview${m && m.photo ? ' has-photo' : ''}" id="mPhotoPreview" style="background:${esc(color)}">${m && m.photo ? photoImg(m.photo) : esc(m ? initials(m.name) : '?')}</span>
+              <div class="photo-field-copy">
+                <span class="field-label">Foto profil <span>opsional</span></span>
+                <p class="form-hint">Dipotong persegi dan diperkecil otomatis agar ringan.</p>
+                <div class="photo-actions">
+                  <button class="btn btn-soft btn-sm" type="button" id="mPhotoPick" data-action="pickMemberPhoto">${ic('camera')}<span>${m && m.photo ? ' Ganti foto' : ' Pilih foto'}</span></button>
+                  <button class="btn btn-ghost btn-sm" type="button" id="mPhotoRemove" data-action="removeMemberPhoto"${m && m.photo ? '' : ' hidden'}>Hapus foto</button>
+                </div>
+              </div>
+            </div>
             <div class="form-field full">
               <label for="mName">Nama lengkap <span>wajib</span></label>
               <input class="input" id="mName" name="name" maxlength="80" value="${v('name')}" placeholder="Sesuai KTP / akta" />
@@ -837,8 +979,12 @@
               <input class="input" id="mAllergy" name="allergies" maxlength="300" value="${v('allergies')}" placeholder="Misal: penisilin, udang, debu" />
             </div>
             <div class="form-field full">
-              <label for="mMedical">Kondisi kesehatan / obat rutin</label>
-              <textarea class="textarea" id="mMedical" name="medical" maxlength="600">${v('medical')}</textarea>
+              <label for="mMedication">Obat rutin <span>nama, dosis, jadwal</span></label>
+              <textarea class="textarea" id="mMedication" name="medication" maxlength="300" placeholder="Misal: Cetirizine 10 mg, malam bila kambuh">${v('medication')}</textarea>
+            </div>
+            <div class="form-field full">
+              <label for="mMedical">Kondisi kesehatan</label>
+              <textarea class="textarea" id="mMedical" name="medical" maxlength="600" placeholder="Misal: asma ringan, riwayat operasi">${v('medical')}</textarea>
             </div>
             <div class="form-field">
               <label for="mPhone">Telepon</label>
@@ -891,6 +1037,7 @@
     const fields = {
       name,
       nickname: data.get('nickname'),
+      photo: String(data.get('photo') || ''),
       relation: data.get('relation'),
       sex: data.get('sex'),
       birthPlace: data.get('birthPlace'),
@@ -898,6 +1045,7 @@
       bloodType: data.get('bloodType'),
       allergies: data.get('allergies'),
       medical: data.get('medical'),
+      medication: data.get('medication'),
       phone: data.get('phone'),
       email: data.get('email'),
       occupation: data.get('occupation'),
@@ -1519,6 +1667,773 @@
     }
   }
 
+  /* ---------- halaman: Perawatan rumah & kendaraan ---------- */
+
+  const UPKEEP_CATS = {
+    rumah: { label: 'Rumah', icon: 'home', pill: 'green' },
+    kendaraan: { label: 'Kendaraan', icon: 'car', pill: 'blue' },
+    elektronik: { label: 'Elektronik', icon: 'plug', pill: 'lilac' },
+    lainnya: { label: 'Lainnya', icon: 'wrench', pill: '' }
+  };
+
+  function normalizeUpkeep(list) {
+    return (Array.isArray(list) ? list : [])
+      .filter((u) => u && typeof u === 'object' && cleanText(u.name, 80))
+      .map((u, index) => {
+        const interval = Number(u.intervalMonths);
+        const cost = Number(u.cost);
+        return {
+          id: String(u.id || `upkeep-${index + 1}`),
+          name: cleanText(u.name, 80),
+          asset: cleanText(u.asset, 80),
+          category: UPKEEP_CATS[u.category] ? u.category : 'lainnya',
+          intervalMonths: Number.isInteger(interval) && interval >= 1 && interval <= 120 ? interval : null,
+          lastDone: cleanDate(u.lastDone),
+          dueDate: cleanDate(u.dueDate),
+          vendor: cleanText(u.vendor, 80),
+          vendorPhone: cleanText(u.vendorPhone, 30),
+          cost: Number.isFinite(cost) && cost > 0 ? Math.round(cost) : null,
+          note: cleanText(u.note, 600),
+          log: (Array.isArray(u.log) ? u.log : [])
+            .filter((e) => e && isValidISODate(String(e.date || '')))
+            .map((e) => ({ date: String(e.date), cost: Number(e.cost) > 0 ? Math.round(Number(e.cost)) : null, note: cleanText(e.note, 200) }))
+            .slice(-20),
+          createdAt: u.createdAt || new Date().toISOString()
+        };
+      });
+  }
+
+  function upkeepNextDue(item) {
+    if (item.dueDate) return item.dueDate;
+    if (item.lastDone && item.intervalMonths) return addMonthsISO(item.lastDone, item.intervalMonths);
+    return '';
+  }
+
+  function upkeepStatus(item) {
+    const next = upkeepNextDue(item);
+    if (!next) return { next: '', days: null, tone: '', label: 'Belum ada jadwal' };
+    const days = daysBetween(todayISO(), next);
+    if (days < 0) return { next, days, tone: 'coral', label: `Terlambat ${-days} hari` };
+    if (days === 0) return { next, days, tone: 'coral', label: 'Hari ini' };
+    if (days <= 14) return { next, days, tone: 'gold', label: `${days} hari lagi` };
+    if (days <= 60) return { next, days, tone: 'green', label: `${days} hari lagi` };
+    return { next, days, tone: '', label: formatDate(next) };
+  }
+
+  function sinceLabel(iso) {
+    const days = daysBetween(iso, todayISO());
+    if (days == null) return '';
+    if (days === 0) return 'hari ini';
+    if (days < 31) return `${days} hari lalu`;
+    const months = Math.round(days / 30.4);
+    if (months < 12) return `${months} bulan lalu`;
+    const years = Math.floor(months / 12);
+    const rest = months % 12;
+    return rest ? `${years} th ${rest} bln lalu` : `${years} tahun lalu`;
+  }
+
+  function renderUpkeep() {
+    const items = [...(hh().upkeep || [])];
+    const withStatus = items.map((item) => ({ item, st: upkeepStatus(item) }))
+      .sort((a, b) => (a.st.days == null ? 9999 : a.st.days) - (b.st.days == null ? 9999 : b.st.days));
+    const filter = ui.upkeepFilter;
+    const shown = withStatus.filter(({ item }) => filter === 'all' || item.category === filter);
+    const late = withStatus.filter(({ st }) => st.days != null && st.days < 0).length;
+    const soon = withStatus.filter(({ st }) => st.days != null && st.days >= 0 && st.days <= 30).length;
+    const yearAgo = addMonthsISO(todayISO(), -12);
+    const spent = items.reduce((sum, item) => sum + item.log.filter((e) => e.date >= yearAgo && e.cost).reduce((a, e) => a + e.cost, 0), 0);
+    const usedCats = Object.keys(UPKEEP_CATS).filter((k) => items.some((i) => i.category === k));
+    return `
+      <div class="view-head">
+        <div>
+          <p class="eyebrow">Perawatan</p>
+          <h1>Rumah &amp; kendaraan terawat.</h1>
+          <p class="view-sub">Catat servis AC, ganti oli, pajak kendaraan, kuras toren, dan sejenisnya. Jadwal berikutnya dihitung otomatis.</p>
+        </div>
+        <div class="view-actions">
+          <button class="btn btn-primary" type="button" data-action="addUpkeep">${ic('plus')} Tambah perawatan</button>
+        </div>
+      </div>
+      ${items.length ? `
+        <div class="bill-summary card card-pad">
+          <div><small>Terlambat</small><strong>${late}</strong></div>
+          <div><small>30 hari ke depan</small><strong>${soon}</strong></div>
+          ${spent ? `<div><small>Biaya 12 bulan terakhir</small><strong>${esc(formatRupiah(spent))}</strong></div>` : ''}
+        </div>
+        ${usedCats.length > 1 ? `<div class="filter-chips fam-filters" role="group" aria-label="Filter kategori perawatan">
+          <button type="button" class="filter-chip ${filter === 'all' ? 'active' : ''}" data-action="setUpkeepFilter" data-filter="all">Semua</button>
+          ${usedCats.map((k) => `<button type="button" class="filter-chip ${filter === k ? 'active' : ''}" data-action="setUpkeepFilter" data-filter="${k}">${esc(UPKEEP_CATS[k].label)}</button>`).join('')}
+        </div>` : ''}
+        <div class="upkeep-grid">${shown.map(({ item, st }) => upkeepCardHTML(item, st)).join('') || familyEmpty({ icon: 'search', title: 'Tidak ada di kategori ini', text: 'Pilih kategori lain.' })}</div>
+      ` : familyEmpty({ icon: 'wrench', title: 'Belum ada catatan perawatan', text: 'Mulai dari yang paling sering lupa: servis AC, ganti oli motor, atau pajak STNK.', action: 'addUpkeep', actionLabel: 'Tambah perawatan' })}`;
+  }
+
+  function upkeepCardHTML(item, st) {
+    const cat = UPKEEP_CATS[item.category];
+    const doneToday = item.lastDone === todayISO();
+    const log = [...item.log].reverse();
+    return `
+      <article class="card upkeep-card" id="upkeep-${esc(item.id)}">
+        <div class="contact-top">
+          <span class="row-icon tone-${cat.pill}">${ic(cat.icon)}</span>
+          <div class="contact-name">
+            <h3>${esc(item.name)}</h3>
+            <p>${esc(item.asset || cat.label)}</p>
+          </div>
+          <span class="entry-actions">
+            <button class="icon-btn sm" type="button" data-action="editUpkeep" data-id="${esc(item.id)}" aria-label="Ubah perawatan">${ic('edit')}</button>
+            <button class="icon-btn sm danger" type="button" data-action="deleteUpkeep" data-id="${esc(item.id)}" aria-label="Hapus perawatan">${ic('trash')}</button>
+          </span>
+        </div>
+        <div class="upkeep-due tone-${st.tone}">
+          <span>${st.next ? 'Berikutnya' : 'Jadwal'}</span>
+          <strong>${st.next ? esc(formatDateLong(st.next)) : 'Belum diatur'}</strong>
+          ${st.next ? `<em>${esc(st.label)}</em>` : ''}
+        </div>
+        <dl class="fact-list compact">
+          <div><dt>Terakhir</dt><dd>${item.lastDone ? `${esc(formatDate(item.lastDone))} <span class="muted">· ${esc(sinceLabel(item.lastDone))}</span>` : '<span class="muted">Belum dicatat</span>'}</dd></div>
+          ${item.intervalMonths ? `<div><dt>Interval</dt><dd>Tiap ${item.intervalMonths} bulan</dd></div>` : ''}
+          ${item.cost ? `<div><dt>Biaya</dt><dd>± ${esc(formatRupiah(item.cost))}</dd></div>` : ''}
+          ${item.vendor || item.vendorPhone ? `<div><dt>Bengkel / teknisi</dt><dd>${esc(item.vendor)}${item.vendorPhone ? `${item.vendor ? ' · ' : ''}<a href="${esc(telHref(item.vendorPhone))}">${esc(item.vendorPhone)}</a>` : ''}</dd></div>` : ''}
+          ${item.note ? `<div><dt>Catatan</dt><dd>${esc(item.note)}</dd></div>` : ''}
+        </dl>
+        ${log.length ? `<details class="upkeep-log">
+          <summary>Riwayat (${log.length})</summary>
+          <ul>${log.map((e) => `<li><span>${esc(formatDate(e.date))}</span>${e.cost ? `<span>${esc(formatRupiah(e.cost))}</span>` : ''}${e.note ? `<small>${esc(e.note)}</small>` : ''}</li>`).join('')}</ul>
+        </details>` : ''}
+        <div class="contact-actions">
+          <button class="btn btn-sm ${doneToday ? 'btn-ghost' : 'btn-soft'}" type="button" data-action="toggleUpkeepDone" data-id="${esc(item.id)}">${doneToday ? 'Batalkan selesai hari ini' : `${ic('check')} Tandai selesai hari ini`}</button>
+        </div>
+      </article>`;
+  }
+
+  function openUpkeepModal(itemId = null) {
+    const u = itemId ? (hh().upkeep || []).find((x) => x.id === itemId) : null;
+    const v = (key) => (u && u[key] != null ? esc(u[key]) : '');
+    openModal({
+      kicker: 'Perawatan',
+      title: u ? 'Ubah perawatan' : 'Tambah perawatan',
+      subtitle: 'Isi “terakhir dilakukan” dan interval, maka jadwal berikutnya dihitung otomatis.',
+      size: 'modal-lg',
+      body: `
+        <form id="upkeepForm" novalidate autocomplete="off">
+          <input type="hidden" name="id" value="${u ? esc(u.id) : ''}" />
+          <div class="form-grid">
+            <div class="form-field">
+              <label for="uName">Nama perawatan <span>wajib</span></label>
+              <input class="input" id="uName" name="name" maxlength="80" value="${v('name')}" placeholder="Misal: Servis AC, Ganti oli" />
+            </div>
+            <div class="form-field">
+              <label for="uCat">Kategori</label>
+              <select class="select" id="uCat" name="category">${Object.entries(UPKEEP_CATS).map(([k, c]) => `<option value="${k}" ${u && u.category === k ? 'selected' : ''}>${esc(c.label)}</option>`).join('')}</select>
+            </div>
+            <div class="form-field full">
+              <label for="uAsset">Barang / kendaraan</label>
+              <input class="input" id="uAsset" name="asset" maxlength="80" value="${v('asset')}" placeholder="Misal: AC kamar utama, Motor Vario B 1234 XX" />
+            </div>
+            <div class="form-field">
+              <label for="uLast">Terakhir dilakukan</label>
+              <input class="input" id="uLast" name="lastDone" type="date" max="${todayISO()}" value="${v('lastDone')}" />
+            </div>
+            <div class="form-field">
+              <label for="uInterval">Diulang tiap</label>
+              <div class="input-group">
+                <input class="input" id="uInterval" name="intervalMonths" type="number" min="1" max="120" inputmode="numeric" value="${v('intervalMonths')}" placeholder="3" />
+                <span class="input-suffix">bulan</span>
+              </div>
+            </div>
+            <div class="form-field full">
+              <label for="uDue">Tanggal berikutnya <span>opsional</span></label>
+              <input class="input" id="uDue" name="dueDate" type="date" value="${v('dueDate')}" />
+              <p class="form-hint">Isi bila tanggalnya pasti, misalnya jatuh tempo pajak STNK. Kosongkan agar dihitung dari interval.</p>
+            </div>
+            <div class="form-field">
+              <label for="uVendor">Bengkel / teknisi</label>
+              <input class="input" id="uVendor" name="vendor" maxlength="80" value="${v('vendor')}" />
+            </div>
+            <div class="form-field">
+              <label for="uVendorPhone">Telepon bengkel / teknisi</label>
+              <input class="input" id="uVendorPhone" name="vendorPhone" type="tel" inputmode="tel" maxlength="30" value="${v('vendorPhone')}" />
+            </div>
+            <div class="form-field">
+              <label for="uCost">Perkiraan biaya</label>
+              <div class="input-group">
+                <span class="input-suffix prefix">Rp</span>
+                <input class="input" id="uCost" name="cost" type="number" min="0" step="1000" inputmode="numeric" value="${v('cost')}" />
+              </div>
+            </div>
+            <div class="form-field full">
+              <label for="uNote">Catatan</label>
+              <textarea class="textarea" id="uNote" name="note" maxlength="600" placeholder="Misal: pakai oli 10W-40, freon R32">${v('note')}</textarea>
+            </div>
+          </div>
+        </form>`,
+      footer: `
+        <button class="btn btn-ghost" type="button" data-action="closeModal">Batal</button>
+        <button class="btn btn-primary" type="submit" form="upkeepForm">${u ? 'Simpan perubahan' : 'Simpan perawatan'}</button>`
+    });
+  }
+
+  function handleUpkeepSubmit(form) {
+    clearFormErrors(form);
+    const data = new FormData(form);
+    const name = cleanText(data.get('name'), 80);
+    const intervalRaw = String(data.get('intervalMonths') || '').trim();
+    const lastDone = String(data.get('lastDone') || '');
+    const dueDate = String(data.get('dueDate') || '');
+    const costRaw = String(data.get('cost') || '').trim();
+    let valid = true;
+    if (name.length < 2) { showFieldError(form, 'name', 'Nama minimal 2 karakter.'); valid = false; }
+    if (intervalRaw && !(Number.isInteger(Number(intervalRaw)) && Number(intervalRaw) >= 1 && Number(intervalRaw) <= 120)) { showFieldError(form, 'intervalMonths', 'Isi 1–120 bulan.'); valid = false; }
+    if (lastDone && (!isValidISODate(lastDone) || lastDone > todayISO())) { showFieldError(form, 'lastDone', 'Tanggal belum tepat.'); valid = false; }
+    if (dueDate && !isValidISODate(dueDate)) { showFieldError(form, 'dueDate', 'Tanggal belum tepat.'); valid = false; }
+    if (costRaw && !(Number(costRaw) >= 0)) { showFieldError(form, 'cost', 'Nominal belum tepat.'); valid = false; }
+    if (!valid) return;
+    if (!hh().upkeep) hh().upkeep = [];
+    const id = String(data.get('id') || '');
+    const existing = id ? hh().upkeep.find((x) => x.id === id) : null;
+    const merged = normalizeUpkeep([{
+      ...(existing || {}),
+      id: id || uid(),
+      name,
+      asset: data.get('asset'),
+      category: data.get('category'),
+      intervalMonths: intervalRaw ? Number(intervalRaw) : null,
+      lastDone,
+      dueDate,
+      vendor: data.get('vendor'),
+      vendorPhone: data.get('vendorPhone'),
+      cost: costRaw ? Number(costRaw) : null,
+      note: data.get('note')
+    }])[0];
+    if (existing) Object.assign(existing, merged);
+    else hh().upkeep.push(merged);
+    saveState();
+    closeModal();
+    renderApp({ preserveScroll: true });
+    toast(existing ? 'Perawatan diperbarui.' : 'Perawatan disimpan.');
+  }
+
+  function toggleUpkeepDone(itemId) {
+    const item = (hh().upkeep || []).find((x) => x.id === itemId);
+    if (!item) return;
+    const today = todayISO();
+    if (item.lastDone === today && item.log.length && item.log[item.log.length - 1].date === today) {
+      const removed = item.log.pop();
+      item.lastDone = item.log.length ? item.log[item.log.length - 1].date : (removed.prevLast || '');
+      if (removed.prevDue) item.dueDate = removed.prevDue;
+      toast(`${item.name}: tanda selesai dibatalkan.`);
+    } else {
+      item.log.push({ date: today, cost: item.cost, note: '', prevLast: item.lastDone, prevDue: item.dueDate });
+      item.log = item.log.slice(-20);
+      item.lastDone = today;
+      item.dueDate = '';
+      const next = upkeepNextDue(item);
+      toast(next ? `${item.name} selesai. Berikutnya ${formatDate(next)}.` : `${item.name} dicatat selesai.`);
+    }
+    saveState();
+    renderApp({ preserveScroll: true });
+  }
+
+  async function deleteUpkeep(itemId) {
+    const item = (hh().upkeep || []).find((x) => x.id === itemId);
+    if (!item) return;
+    const ok = await askConfirm({ title: 'Hapus catatan perawatan?', message: `<strong>${esc(item.name)}</strong> beserta riwayatnya akan dihapus.`, confirmText: 'Hapus', danger: true });
+    if (!ok) return;
+    hh().upkeep = hh().upkeep.filter((x) => x.id !== itemId);
+    saveState();
+    renderApp({ preserveScroll: true });
+    toast('Catatan perawatan dihapus.');
+  }
+
+  function openUpkeepView(itemId) {
+    navigate('upkeep');
+    window.setTimeout(() => {
+      const card = document.getElementById(`upkeep-${itemId}`);
+      if (card) {
+        card.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        card.classList.add('is-flash');
+        window.setTimeout(() => card.classList.remove('is-flash'), 1600);
+      }
+    }, 120);
+  }
+
+  /* ---------- tampilan: terang / gelap ---------- */
+
+  function themePref() {
+    return window.serumahTheme ? window.serumahTheme.get() : 'auto';
+  }
+
+  function isDarkNow() {
+    return document.documentElement.getAttribute('data-mode') === 'dark';
+  }
+
+  function setThemePref(value) {
+    if (!window.serumahTheme) return;
+    window.serumahTheme.set(['auto', 'light', 'dark'].includes(value) ? value : 'auto');
+    updateThemeToggle();
+  }
+
+  function updateThemeToggle() {
+    const btn = $('#themeToggle');
+    if (!btn) return;
+    const dark = isDarkNow();
+    btn.innerHTML = ic(dark ? 'sun' : 'moon');
+    btn.setAttribute('aria-label', dark ? 'Ganti ke tampilan terang' : 'Ganti ke tampilan gelap');
+    btn.title = dark ? 'Tampilan terang' : 'Tampilan gelap';
+  }
+
+  function themeSettingsHTML() {
+    const pref = themePref();
+    const opt = (value, label, icon) => `<button type="button" class="${pref === value ? 'active' : ''}" data-action="setTheme" data-value="${value}" aria-pressed="${pref === value}">${ic(icon)} ${label}</button>`;
+    return `
+      <section class="card settings-section" style="margin-top:16px">
+        <div class="settings-title-row">
+          <div><h2>Tampilan</h2><p>Pilihan ini disimpan per perangkat.</p></div>
+        </div>
+        <div class="tab-switch theme-switch" role="group" aria-label="Tema tampilan">
+          ${opt('auto', 'Ikuti perangkat', 'refresh')}
+          ${opt('light', 'Terang', 'sun')}
+          ${opt('dark', 'Gelap', 'moon')}
+        </div>
+      </section>`;
+  }
+
+  /* ---------- halaman: Garansi barang ---------- */
+
+  function normalizeWarranties(list) {
+    return (Array.isArray(list) ? list : [])
+      .filter((w) => w && typeof w === 'object' && cleanText(w.name, 80))
+      .map((w, index) => {
+        const months = Number(w.months);
+        const price = Number(w.price);
+        return {
+          id: String(w.id || `warranty-${index + 1}`),
+          name: cleanText(w.name, 80),
+          model: cleanText(w.model, 80),
+          serial: cleanText(w.serial, 60),
+          store: cleanText(w.store, 80),
+          purchaseDate: cleanDate(w.purchaseDate),
+          months: Number.isInteger(months) && months >= 1 && months <= 240 ? months : null,
+          until: cleanDate(w.until),
+          price: Number.isFinite(price) && price > 0 ? Math.round(price) : null,
+          storedAt: cleanText(w.storedAt, 120),
+          servicePhone: cleanText(w.servicePhone, 30),
+          note: cleanText(w.note, 600),
+          createdAt: w.createdAt || new Date().toISOString()
+        };
+      });
+  }
+
+  function warrantyEnd(w) {
+    if (w.until) return w.until;
+    if (w.purchaseDate && w.months) return addMonthsISO(w.purchaseDate, w.months);
+    return '';
+  }
+
+  function warrantyStatus(w) {
+    const end = warrantyEnd(w);
+    if (!end) return { end: '', days: null, tone: '', label: 'Masa garansi belum diisi', active: true };
+    const days = daysBetween(todayISO(), end);
+    if (days < 0) return { end, days, tone: '', label: `Habis ${formatDate(end)}`, active: false };
+    if (days <= 30) return { end, days, tone: 'coral', label: days === 0 ? 'Habis hari ini' : `Habis ${days} hari lagi`, active: true };
+    if (days <= 90) return { end, days, tone: 'gold', label: `Sisa ${days} hari`, active: true };
+    const months = Math.round(days / 30.4);
+    return { end, days, tone: 'green', label: months >= 12 ? `Sisa ${Math.floor(months / 12)} th ${months % 12 ? `${months % 12} bln` : ''}`.trim() : `Sisa ${months} bulan`, active: true };
+  }
+
+  function renderWarranties() {
+    const list = (hh().warranties || []).map((w) => ({ w, st: warrantyStatus(w) }));
+    const filter = ui.warrantyFilter;
+    const active = list.filter((x) => x.st.active).sort((a, b) => (a.st.days == null ? 1e6 : a.st.days) - (b.st.days == null ? 1e6 : b.st.days));
+    const expired = list.filter((x) => !x.st.active).sort((a, b) => b.st.days - a.st.days);
+    const shown = filter === 'expired' ? expired : active;
+    return `
+      <div class="view-head">
+        <div>
+          <p class="eyebrow">Garansi</p>
+          <h1>Kartu garansi tanpa dicari-cari.</h1>
+          <p class="view-sub">Catat tanggal beli, lama garansi, nomor seri, dan di mana kartunya disimpan. Pengingat muncul 30 hari sebelum habis.</p>
+        </div>
+        <div class="view-actions">
+          <button class="btn btn-primary" type="button" data-action="addWarranty">${ic('plus')} Tambah barang</button>
+        </div>
+      </div>
+      ${list.length ? `
+        <div class="filter-chips fam-filters" role="group" aria-label="Filter garansi">
+          <button type="button" class="filter-chip ${filter !== 'expired' ? 'active' : ''}" data-action="setWarrantyFilter" data-filter="active">Masih berlaku (${active.length})</button>
+          <button type="button" class="filter-chip ${filter === 'expired' ? 'active' : ''}" data-action="setWarrantyFilter" data-filter="expired">Sudah habis (${expired.length})</button>
+        </div>
+        <div class="upkeep-grid">${shown.map(({ w, st }) => warrantyCardHTML(w, st)).join('') || familyEmpty({ icon: 'tag', title: filter === 'expired' ? 'Belum ada garansi yang habis' : 'Semua garansi sudah habis', text: filter === 'expired' ? 'Barang yang garansinya lewat akan pindah ke sini.' : 'Tambahkan barang baru yang masih bergaransi.' })}</div>
+      ` : familyEmpty({ icon: 'tag', title: 'Belum ada barang bergaransi', text: 'Mulai dari barang mahal yang baru dibeli: kulkas, mesin cuci, laptop, HP.', action: 'addWarranty', actionLabel: 'Tambah barang' })}`;
+  }
+
+  function warrantyCardHTML(w, st) {
+    const progress = (() => {
+      if (!st.end || !w.purchaseDate) return null;
+      const total = daysBetween(w.purchaseDate, st.end);
+      const used = daysBetween(w.purchaseDate, todayISO());
+      if (!total || total <= 0) return null;
+      return clamp((used / total) * 100, 0, 100);
+    })();
+    return `
+      <article class="card upkeep-card${st.active ? '' : ' is-expired'}" id="warranty-${esc(w.id)}">
+        <div class="contact-top">
+          <span class="row-icon tone-${st.active ? 'lilac' : ''}">${ic('tag')}</span>
+          <div class="contact-name">
+            <h3>${esc(w.name)}</h3>
+            <p>${esc(w.model || (w.store ? `Dibeli di ${w.store}` : 'Barang rumah'))}</p>
+          </div>
+          <span class="entry-actions">
+            <button class="icon-btn sm" type="button" data-action="editWarranty" data-id="${esc(w.id)}" aria-label="Ubah garansi">${ic('edit')}</button>
+            <button class="icon-btn sm danger" type="button" data-action="deleteWarranty" data-id="${esc(w.id)}" aria-label="Hapus garansi">${ic('trash')}</button>
+          </span>
+        </div>
+        <div class="upkeep-due tone-${st.tone}">
+          <span>${st.active ? 'Garansi berlaku sampai' : 'Garansi berakhir'}</span>
+          <strong>${st.end ? esc(formatDateLong(st.end)) : 'Belum diisi'}</strong>
+          ${st.end && st.active ? `<em>${esc(st.label)}</em>` : ''}
+          ${progress != null ? `<i class="warranty-bar" aria-hidden="true"><b style="width:${progress.toFixed(1)}%"></b></i>` : ''}
+        </div>
+        <dl class="fact-list compact">
+          ${w.serial ? `<div><dt>No. seri</dt><dd class="serial-line"><code>${esc(w.serial)}</code>${copyButton(w.serial, 'nomor seri')}</dd></div>` : ''}
+          ${w.purchaseDate ? `<div><dt>Dibeli</dt><dd>${esc(formatDate(w.purchaseDate))}${w.store ? ` · ${esc(w.store)}` : ''}</dd></div>` : (w.store ? `<div><dt>Toko</dt><dd>${esc(w.store)}</dd></div>` : '')}
+          ${w.price ? `<div><dt>Harga</dt><dd>${esc(formatRupiah(w.price))}</dd></div>` : ''}
+          ${w.storedAt ? `<div><dt>Kartu garansi</dt><dd>${esc(w.storedAt)}</dd></div>` : ''}
+          ${w.servicePhone ? `<div><dt>Servis resmi</dt><dd><a href="${esc(telHref(w.servicePhone))}">${esc(w.servicePhone)}</a></dd></div>` : ''}
+          ${w.note ? `<div><dt>Catatan</dt><dd>${esc(w.note)}</dd></div>` : ''}
+        </dl>
+      </article>`;
+  }
+
+  function openWarrantyModal(id = null) {
+    const w = id ? (hh().warranties || []).find((x) => x.id === id) : null;
+    const v = (key) => (w && w[key] != null ? esc(w[key]) : '');
+    openModal({
+      kicker: 'Garansi',
+      title: w ? 'Ubah data garansi' : 'Tambah barang bergaransi',
+      subtitle: 'Isi tanggal beli dan lama garansi; tanggal habis dihitung otomatis.',
+      size: 'modal-lg',
+      body: `
+        <form id="warrantyForm" novalidate autocomplete="off">
+          <input type="hidden" name="id" value="${w ? esc(w.id) : ''}" />
+          <div class="form-grid">
+            <div class="form-field">
+              <label for="wName">Nama barang <span>wajib</span></label>
+              <input class="input" id="wName" name="name" maxlength="80" value="${v('name')}" placeholder="Misal: Kulkas, Mesin cuci" />
+            </div>
+            <div class="form-field">
+              <label for="wModel">Merek / tipe</label>
+              <input class="input" id="wModel" name="model" maxlength="80" value="${v('model')}" placeholder="Misal: Sharp SJ-316MG" />
+            </div>
+            <div class="form-field">
+              <label for="wSerial">Nomor seri</label>
+              <input class="input mono" id="wSerial" name="serial" maxlength="60" value="${v('serial')}" spellcheck="false" />
+            </div>
+            <div class="form-field">
+              <label for="wStore">Toko</label>
+              <input class="input" id="wStore" name="store" maxlength="80" value="${v('store')}" placeholder="Misal: Electronic City, Tokopedia" />
+            </div>
+            <div class="form-field">
+              <label for="wDate">Tanggal beli</label>
+              <input class="input" id="wDate" name="purchaseDate" type="date" max="${todayISO()}" value="${v('purchaseDate')}" />
+            </div>
+            <div class="form-field">
+              <label for="wMonths">Lama garansi</label>
+              <div class="input-group">
+                <input class="input" id="wMonths" name="months" type="number" min="1" max="240" inputmode="numeric" value="${v('months')}" placeholder="12" />
+                <span class="input-suffix">bulan</span>
+              </div>
+            </div>
+            <div class="form-field full">
+              <label for="wUntil">Berlaku sampai <span>opsional</span></label>
+              <input class="input" id="wUntil" name="until" type="date" value="${v('until')}" />
+              <p class="form-hint">Isi bila tanggalnya tertulis di kartu garansi. Kosongkan agar dihitung dari tanggal beli.</p>
+            </div>
+            <div class="form-field">
+              <label for="wPrice">Harga</label>
+              <div class="input-group">
+                <span class="input-suffix prefix">Rp</span>
+                <input class="input" id="wPrice" name="price" type="number" min="0" step="1000" inputmode="numeric" value="${v('price')}" />
+              </div>
+            </div>
+            <div class="form-field">
+              <label for="wService">Telepon servis resmi</label>
+              <input class="input" id="wService" name="servicePhone" type="tel" inputmode="tel" maxlength="30" value="${v('servicePhone')}" />
+            </div>
+            <div class="form-field full">
+              <label for="wStored">Kartu garansi & nota disimpan di</label>
+              <input class="input" id="wStored" name="storedAt" maxlength="120" value="${v('storedAt')}" placeholder="Misal: map garansi, laci dapur" />
+            </div>
+            <div class="form-field full">
+              <label for="wNote">Catatan</label>
+              <textarea class="textarea" id="wNote" name="note" maxlength="600">${v('note')}</textarea>
+            </div>
+          </div>
+        </form>`,
+      footer: `
+        <button class="btn btn-ghost" type="button" data-action="closeModal">Batal</button>
+        <button class="btn btn-primary" type="submit" form="warrantyForm">${w ? 'Simpan perubahan' : 'Simpan garansi'}</button>`
+    });
+  }
+
+  function handleWarrantySubmit(form) {
+    clearFormErrors(form);
+    const data = new FormData(form);
+    const name = cleanText(data.get('name'), 80);
+    const monthsRaw = String(data.get('months') || '').trim();
+    const purchaseDate = String(data.get('purchaseDate') || '');
+    const until = String(data.get('until') || '');
+    const priceRaw = String(data.get('price') || '').trim();
+    let valid = true;
+    if (name.length < 2) { showFieldError(form, 'name', 'Nama minimal 2 karakter.'); valid = false; }
+    if (monthsRaw && !(Number.isInteger(Number(monthsRaw)) && Number(monthsRaw) >= 1 && Number(monthsRaw) <= 240)) { showFieldError(form, 'months', 'Isi 1–240 bulan.'); valid = false; }
+    if (purchaseDate && (!isValidISODate(purchaseDate) || purchaseDate > todayISO())) { showFieldError(form, 'purchaseDate', 'Tanggal belum tepat.'); valid = false; }
+    if (until && !isValidISODate(until)) { showFieldError(form, 'until', 'Tanggal belum tepat.'); valid = false; }
+    if (until && purchaseDate && until < purchaseDate) { showFieldError(form, 'until', 'Tidak boleh sebelum tanggal beli.'); valid = false; }
+    if (priceRaw && !(Number(priceRaw) >= 0)) { showFieldError(form, 'price', 'Nominal belum tepat.'); valid = false; }
+    if (!valid) return;
+    if (!hh().warranties) hh().warranties = [];
+    const id = String(data.get('id') || '');
+    const existing = id ? hh().warranties.find((x) => x.id === id) : null;
+    const merged = normalizeWarranties([{
+      ...(existing || {}),
+      id: id || uid(),
+      name,
+      model: data.get('model'),
+      serial: data.get('serial'),
+      store: data.get('store'),
+      purchaseDate,
+      months: monthsRaw ? Number(monthsRaw) : null,
+      until,
+      price: priceRaw ? Number(priceRaw) : null,
+      storedAt: data.get('storedAt'),
+      servicePhone: data.get('servicePhone'),
+      note: data.get('note')
+    }])[0];
+    if (existing) Object.assign(existing, merged);
+    else hh().warranties.push(merged);
+    saveState();
+    closeModal();
+    renderApp({ preserveScroll: true });
+    toast(existing ? 'Data garansi diperbarui.' : 'Garansi disimpan.');
+  }
+
+  async function deleteWarranty(id) {
+    const w = (hh().warranties || []).find((x) => x.id === id);
+    if (!w) return;
+    const ok = await askConfirm({ title: 'Hapus data garansi?', message: `Data garansi <strong>${esc(w.name)}</strong> akan dihapus.`, confirmText: 'Hapus', danger: true });
+    if (!ok) return;
+    hh().warranties = hh().warranties.filter((x) => x.id !== id);
+    saveState();
+    renderApp({ preserveScroll: true });
+    toast('Data garansi dihapus.');
+  }
+
+  function openWarrantyView(id) {
+    const w = (hh().warranties || []).find((x) => x.id === id);
+    ui.warrantyFilter = w && !warrantyStatus(w).active ? 'expired' : 'active';
+    navigate('warranty');
+    window.setTimeout(() => {
+      const card = document.getElementById(`warranty-${id}`);
+      if (card) {
+        card.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        card.classList.add('is-flash');
+        window.setTimeout(() => card.classList.remove('is-flash'), 1600);
+      }
+    }, 120);
+  }
+
+  /* ---------- halaman: Belanja bersama ---------- */
+
+  function normalizeShopping(list) {
+    return (Array.isArray(list) ? list : [])
+      .filter((s) => s && typeof s === 'object' && cleanText(s.text, 80))
+      .map((s, index) => ({
+        id: String(s.id || `shop-${index + 1}`),
+        text: cleanText(s.text, 80),
+        done: Boolean(s.done),
+        addedAt: s.addedAt || new Date().toISOString(),
+        doneAt: s.done ? (s.doneAt || new Date().toISOString()) : ''
+      }))
+      .slice(-300);
+  }
+
+  function normalizeRecent(list) {
+    const seen = new Set();
+    return (Array.isArray(list) ? list : [])
+      .map((x) => cleanText(x, 80))
+      .filter((x) => {
+        const key = x.toLowerCase();
+        if (!x || seen.has(key)) return false;
+        seen.add(key);
+        return true;
+      })
+      .slice(0, 24);
+  }
+
+  function shopList() {
+    if (!hh().shopping) hh().shopping = [];
+    return hh().shopping;
+  }
+
+  function rememberShopItem(text) {
+    const h = hh();
+    h.shoppingRecent = normalizeRecent([text, ...(h.shoppingRecent || [])]);
+  }
+
+  function addShopItems(raw) {
+    const parts = String(raw || '').split(/[,\n;]+/).map((p) => cleanText(p, 80)).filter(Boolean);
+    if (!parts.length) return 0;
+    const list = shopList();
+    let added = 0;
+    parts.forEach((text) => {
+      const key = text.toLowerCase();
+      const existing = list.find((s) => s.text.toLowerCase() === key);
+      if (existing) {
+        if (existing.done) { existing.done = false; existing.doneAt = ''; added += 1; }
+        return;
+      }
+      list.push({ id: uid(), text, done: false, addedAt: new Date().toISOString(), doneAt: '' });
+      added += 1;
+    });
+    return added;
+  }
+
+  function refocusShopInput(id) {
+    window.requestAnimationFrame(() => {
+      const input = document.getElementById(id);
+      if (input) input.focus({ preventScroll: true });
+    });
+  }
+
+  function handleShopSubmit(form) {
+    const input = form.querySelector('input[name="item"]');
+    const value = input ? input.value : '';
+    const added = addShopItems(value);
+    if (!added) {
+      if (input) input.focus();
+      return;
+    }
+    saveState();
+    renderApp({ preserveScroll: true, animate: false });
+    refocusShopInput(form.dataset.focus || 'shopInput');
+    if (added > 1) toast(`${added} barang ditambahkan.`);
+  }
+
+  function toggleShopItem(id) {
+    const item = shopList().find((s) => s.id === id);
+    if (!item) return;
+    item.done = !item.done;
+    item.doneAt = item.done ? new Date().toISOString() : '';
+    if (item.done) rememberShopItem(item.text);
+    saveState();
+    renderApp({ preserveScroll: true, animate: false });
+  }
+
+  function deleteShopItem(id) {
+    const list = shopList();
+    const item = list.find((s) => s.id === id);
+    if (!item) return;
+    rememberShopItem(item.text);
+    hh().shopping = list.filter((s) => s.id !== id);
+    ui.lastRemovedShop = item;
+    saveState();
+    renderApp({ preserveScroll: true, animate: false });
+  }
+
+  function undoShopDelete() {
+    const item = ui.lastRemovedShop;
+    if (!item) return;
+    ui.lastRemovedShop = null;
+    if (!shopList().some((s) => s.id === item.id)) shopList().push(item);
+    saveState();
+    renderApp({ preserveScroll: true, animate: false });
+  }
+
+  function clearDoneShop() {
+    const list = shopList();
+    const done = list.filter((s) => s.done);
+    if (!done.length) return;
+    done.forEach((s) => rememberShopItem(s.text));
+    hh().shopping = list.filter((s) => !s.done);
+    ui.lastRemovedShop = null;
+    saveState();
+    renderApp({ preserveScroll: true, animate: false });
+    toast(`${done.length} barang yang sudah dibeli dihapus dari daftar.`);
+  }
+
+  function addRecentShop(text) {
+    if (!addShopItems(text)) return;
+    saveState();
+    renderApp({ preserveScroll: true, animate: false });
+  }
+
+  function forgetRecentShop(text) {
+    const key = String(text || '').toLowerCase();
+    hh().shoppingRecent = (hh().shoppingRecent || []).filter((x) => x.toLowerCase() !== key);
+    saveState();
+    renderApp({ preserveScroll: true, animate: false });
+  }
+
+  function shopRowHTML(s) {
+    return `
+      <li class="shop-row${s.done ? ' is-done' : ''}">
+        <button class="shop-check" type="button" data-action="toggleShop" data-id="${esc(s.id)}" aria-pressed="${s.done}" aria-label="${s.done ? 'Tandai belum dibeli' : 'Tandai sudah dibeli'}: ${esc(s.text)}">${ic('check')}</button>
+        <button class="shop-text" type="button" data-action="toggleShop" data-id="${esc(s.id)}">${esc(s.text)}</button>
+        <button class="icon-btn sm shop-remove" type="button" data-action="deleteShop" data-id="${esc(s.id)}" aria-label="Hapus ${esc(s.text)}">${ic('x')}</button>
+      </li>`;
+  }
+
+  function shopAddFormHTML(id, compact = false) {
+    return `
+      <form class="shop-add${compact ? ' is-compact' : ''}" id="${compact ? 'shopFormHome' : 'shopForm'}" data-focus="${id}" autocomplete="off">
+        <label class="sr-only" for="${id}">Tambah barang belanja</label>
+        <input class="input" id="${id}" name="item" maxlength="200" placeholder="${compact ? 'Tambah barang belanja…' : 'Ketik barang, lalu Enter'}" enterkeyhint="done" />
+        <button class="btn btn-primary" type="submit" aria-label="Tambah">${ic('plus')}<span>Tambah</span></button>
+      </form>${compact ? '' : '<p class="form-hint shop-hint">Bisa beberapa sekaligus, pisahkan dengan koma: <em>gula, kopi, telur 1 kg</em></p>'}`;
+  }
+
+  function renderShopping() {
+    const list = shopList();
+    const todo = list.filter((s) => !s.done);
+    const done = list.filter((s) => s.done).sort((a, b) => String(b.doneAt).localeCompare(String(a.doneAt)));
+    const inList = new Set(todo.map((s) => s.text.toLowerCase()));
+    const recent = (hh().shoppingRecent || []).filter((x) => !inList.has(x.toLowerCase())).slice(0, 16);
+    const undo = ui.lastRemovedShop;
+    return `
+      <div class="view-head">
+        <div>
+          <p class="eyebrow">Belanja bersama</p>
+          <h1>Yang perlu dibeli.</h1>
+          <p class="view-sub">Siapa pun yang sedang di toko bisa langsung mencentang. Daftar ikut tersinkron ke HP pasangan.</p>
+        </div>
+      </div>
+      <div class="shop-layout">
+        <section class="card card-pad shop-main">
+          ${shopAddFormHTML('shopInput')}
+          ${undo ? `<div class="shop-undo">“${esc(undo.text)}” dihapus. <button class="text-link" type="button" data-action="undoShop">Urungkan</button></div>` : ''}
+          ${todo.length ? `<ul class="shop-list">${todo.map(shopRowHTML).join('')}</ul>` : `<p class="shop-empty">${ic('check')} Daftar kosong. Ketik barang di atas, atau ketuk barang yang sering dibeli.</p>`}
+          ${done.length ? `
+            <div class="shop-done-head">
+              <span>Sudah dibeli (${done.length})</span>
+              <button class="btn btn-ghost btn-sm" type="button" data-action="clearDoneShop">${ic('trash')} Bersihkan</button>
+            </div>
+            <ul class="shop-list">${done.map(shopRowHTML).join('')}</ul>` : ''}
+        </section>
+        <aside class="card card-pad shop-recent">
+          <h2 class="card-title">Sering dibeli</h2>
+          <p class="card-sub">Ketuk untuk menambah lagi, × untuk melupakan.</p>
+          ${recent.length ? `<div class="recent-chips">${recent.map((x) => `
+            <span class="recent-chip">
+              <button type="button" data-action="addRecentShop" data-text="${esc(x)}">${ic('plus')} ${esc(x)}</button>
+              <button type="button" class="recent-forget" data-action="forgetRecentShop" data-text="${esc(x)}" aria-label="Lupakan ${esc(x)}">${ic('x')}</button>
+            </span>`).join('')}</div>` : '<p class="muted small" style="margin-top:12px">Barang yang dicentang atau dihapus akan muncul di sini untuk ditambah ulang dengan cepat.</p>'}
+        </aside>
+      </div>`;
+  }
+
+
   function rerenderSecrets() {
     if (document.body.classList.contains('modal-open')) {
       $$('.modal-panel .secret-line').forEach((line) => {
@@ -1658,6 +2573,9 @@
     homeQuery: '',
     docFilter: 'all',
     contactFilter: 'all',
+    upkeepFilter: 'all',
+    warrantyFilter: 'active',
+    lastRemovedShop: null,
     revealed: new Set(),
     revealAll: false,
     metric: 'weight',
@@ -1961,6 +2879,9 @@
     else if (formId === 'documentForm') handleDocumentSubmit(form);
     else if (formId === 'contactForm') handleContactSubmit(form);
     else if (formId === 'billForm') handleBillSubmit(form);
+    else if (formId === 'upkeepForm') handleUpkeepSubmit(form);
+    else if (formId === 'warrantyForm') handleWarrantySubmit(form);
+    else if (formId === 'shopForm' || formId === 'shopFormHome') handleShopSubmit(form);
     else if (formId === 'householdForm') handleHouseholdSubmit(form);
   }
 
@@ -2397,14 +3318,14 @@
     const h = data.household || defaultHousehold();
     const demoItem = (item) => String(item.id).startsWith('demo-');
     return hasDemoData(data) && data.children.every((child) => child.id === 'demo-raka') &&
-      h.members.every(demoItem) && h.documents.every(demoItem) && h.contacts.every(demoItem) && h.bills.every(demoItem);
+      h.members.every(demoItem) && h.documents.every(demoItem) && h.contacts.every(demoItem) && h.bills.every(demoItem) && (h.upkeep || []).every(demoItem) && (h.warranties || []).every(demoItem);
   }
 
   function recordCount(data) {
     if (!data || typeof data !== 'object') return 0;
     const h = data.household || {};
     const len = (x) => (Array.isArray(x) ? x.length : 0);
-    return len(data.children) + len(h.members) + len(h.documents) + len(h.contacts) + len(h.bills);
+    return len(data.children) + len(h.members) + len(h.documents) + len(h.contacts) + len(h.bills) + len(h.upkeep) + len(h.warranties) + len(h.shopping);
   }
 
   function removeDemoData() {
@@ -3007,6 +3928,8 @@
 
   function avatarHTML(child, size = '') {
     if (!child) return `<span class="avatar ${size}" style="--avatar:#8a9991">T</span>`;
+    const photo = photoForChild(child);
+    if (photo) return `<span class="avatar has-photo ${size}" style="--avatar:${esc(child.color)}">${photoImg(photo)}</span>`;
     return `<span class="avatar ${size}" style="--avatar:${esc(child.color)}">${esc(initials(child.name))}</span>`;
   }
 
@@ -3133,22 +4056,22 @@
       <g class="chart-point" tabindex="0" role="img" aria-label="${esc(formatDate(point.date, { year: 'numeric' }))}, ${formatNumber(point.value)} ${unit}"
          data-date="${esc(point.date)}" data-value="${point.value}" data-x="${point.x}" data-y="${point.y}">
         <circle cx="${point.x.toFixed(1)}" cy="${point.y.toFixed(1)}" r="10" fill="transparent"/>
-        <circle class="chart-dot" cx="${point.x.toFixed(1)}" cy="${point.y.toFixed(1)}" r="3.8" fill="${color}"/>
+        <circle class="chart-dot" cx="${point.x.toFixed(1)}" cy="${point.y.toFixed(1)}" r="3.8" style="fill:${color}"/>
       </g>`).join('');
 
     const svg = `
       <svg class="chart-svg" viewBox="0 0 ${width} ${height}" width="${width}" height="${height}" role="img" aria-label="Grafik ${esc(METRICS[metric].label)}">
         <defs>
           <linearGradient id="${gradientId}" x1="0" y1="0" x2="0" y2="1">
-            <stop offset="0%" stop-color="${color}" stop-opacity=".19"/>
-            <stop offset="100%" stop-color="${color}" stop-opacity="0"/>
+            <stop offset="0%" style="stop-color:${color}" stop-opacity=".19"/>
+            <stop offset="100%" style="stop-color:${color}" stop-opacity="0"/>
           </linearGradient>
         </defs>
         ${tickMarkup}
         <line class="chart-axis-line" x1="${padding.left}" y1="${height - padding.bottom}" x2="${width - padding.right}" y2="${height - padding.bottom}"/>
         ${areaPath ? `<path d="${areaPath}" fill="url(#${gradientId})"/>` : ''}
-        ${coords.length > 1 ? `<path class="chart-line" d="${path}" stroke="${color}"/>` : ''}
-        ${coords.length > 1 ? `<circle cx="${latest.x.toFixed(1)}" cy="${latest.y.toFixed(1)}" r="8" fill="${color}" opacity=".12"/>` : ''}
+        ${coords.length > 1 ? `<path class="chart-line" d="${path}" style="stroke:${color}"/>` : ''}
+        ${coords.length > 1 ? `<circle cx="${latest.x.toFixed(1)}" cy="${latest.y.toFixed(1)}" r="8" style="fill:${color}" opacity=".12"/>` : ''}
         ${dotMarkup}
         ${xLabels}
       </svg>
@@ -4110,14 +5033,16 @@
             </div>
           </section>
 
+          ${themeSettingsHTML()}
+
           <section class="card about-section" style="margin-top:16px">
             <div class="about-mark">
               <span class="brand-mark">${'<svg viewBox="0 0 24 24" aria-hidden="true"><use href="#i-sprout"></use></svg>'}</span>
-              <div><strong>tumbuh</strong><br /><small style="font-size:8px;letter-spacing:.1em;text-transform:uppercase;color:var(--muted)">catatan perkembangan</small></div>
+              <div><strong>serumah</strong><br /><small style="font-size:10px;letter-spacing:.1em;text-transform:uppercase;color:var(--muted)">data keluarga</small></div>
             </div>
-            <p>Satu tempat tenang untuk mencatat pertumbuhan, milestone, imunisasi, dan cerita kecil anak.</p>
+            <p>Satu tempat untuk data penting keluarga, perawatan rumah, dan catatan tumbuh kembang anak.</p>
             <p class="disclaimer">Tumbuh bukan alat diagnosis medis. Isi aplikasi bersifat panduan umum dan tidak menggantikan konsultasi dengan dokter, bidan, atau posyandu. Data tersimpan di browser ini; bila sinkronisasi aktif, salinannya juga tersimpan di Netlify Blobs. Menghapus data browser dapat menghapus catatan lokal.</p>
-            <div class="version-line"><span>Versi 1.1 · Netlify Sync</span><span>Dibuat untuk Bunda &amp; Ayah</span></div>
+            <div class="version-line"><span>Versi 2.1 · Netlify Sync</span><span>Dibuat untuk Bunda &amp; Ayah</span></div>
           </section>
         </aside>
       </div>`;
@@ -4403,18 +5328,23 @@
     else crumb = VIEW_META[ui.view] ? VIEW_META[ui.view].crumb : 'Ringkasan';
     $('#pageCrumb').textContent = crumb;
     $('#crumbRoot').textContent = READ_ONLY_MODE ? 'Tumbuh' : 'Serumah';
+    updateThemeToggle();
     $('#headerDateText').textContent = new Date().toLocaleDateString('id-ID', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' });
 
     const switchAvatar = $('#switchAvatar');
     const switchName = $('#switchName');
     const switchAge = $('#switchAge');
     if (child) {
-      switchAvatar.textContent = initials(child.name);
+      const childPhoto = photoForChild(child);
+      if (childPhoto) switchAvatar.innerHTML = photoImg(childPhoto);
+      else switchAvatar.textContent = initials(child.name);
+      switchAvatar.classList.toggle('has-photo', Boolean(childPhoto));
       switchAvatar.style.background = child.color;
       switchName.textContent = child.name;
       switchAge.textContent = formatAge(child.birthDate);
     } else {
       switchAvatar.textContent = 'T';
+      switchAvatar.classList.remove('has-photo');
       switchAvatar.style.background = '#8a9991';
       switchName.textContent = 'Profil anak';
       switchAge.textContent = 'Tambahkan profil';
@@ -4449,6 +5379,9 @@
     else if (ui.view === 'documents') content = renderDocuments();
     else if (ui.view === 'contacts') content = renderContacts();
     else if (ui.view === 'bills') content = renderBills();
+    else if (ui.view === 'upkeep') content = renderUpkeep();
+    else if (ui.view === 'warranty') content = renderWarranties();
+    else if (ui.view === 'shopping') content = renderShopping();
     else if (!child && !['settings', 'family'].includes(ui.view)) content = renderWelcome();
     else if (ui.view === 'growth') content = renderGrowth(child);
     else if (ui.view === 'milestones') content = renderMilestones(child);
@@ -5089,7 +6022,7 @@
     'cloudUseCloud', 'cloudKeepLocal', 'shareRotate', 'shareToggle',
     'addMember', 'editMember', 'deleteMember', 'viewMember', 'addDocument', 'editDocument', 'deleteDocument', 'viewDocument',
     'addContact', 'editContact', 'deleteContact', 'addBill', 'editBill', 'deleteBill', 'viewBill', 'toggleBillPaid', 'editHousehold',
-    'toggleReveal', 'toggleRevealAll', 'copyText'
+    'toggleReveal', 'toggleRevealAll', 'copyText', 'pickMemberPhoto', 'removeMemberPhoto', 'addUpkeep', 'editUpkeep', 'deleteUpkeep', 'toggleUpkeepDone', 'viewUpkeep', 'addWarranty', 'editWarranty', 'deleteWarranty', 'viewWarranty', 'toggleShop', 'deleteShop', 'undoShop', 'clearDoneShop', 'addRecentShop', 'forgetRecentShop'
   ]);
 
   document.addEventListener('click', (event) => {
@@ -5201,6 +6134,27 @@
       return;
     }
     if (action === 'clearVaccine') { event.preventDefault(); clearVaccineRecord(actionEl.dataset.id); return; }
+    if (action === 'addWarranty') { event.preventDefault(); openWarrantyModal(); return; }
+    if (action === 'editWarranty') { event.preventDefault(); openWarrantyModal(actionEl.dataset.id); return; }
+    if (action === 'deleteWarranty') { event.preventDefault(); deleteWarranty(actionEl.dataset.id); return; }
+    if (action === 'viewWarranty') { event.preventDefault(); closeModal({ restoreFocus: false, silent: true }); openWarrantyView(actionEl.dataset.id); return; }
+    if (action === 'setWarrantyFilter') { event.preventDefault(); ui.warrantyFilter = actionEl.dataset.filter === 'expired' ? 'expired' : 'active'; renderApp({ preserveScroll: true }); return; }
+    if (action === 'toggleShop') { event.preventDefault(); toggleShopItem(actionEl.dataset.id); return; }
+    if (action === 'deleteShop') { event.preventDefault(); deleteShopItem(actionEl.dataset.id); return; }
+    if (action === 'undoShop') { event.preventDefault(); undoShopDelete(); return; }
+    if (action === 'clearDoneShop') { event.preventDefault(); clearDoneShop(); return; }
+    if (action === 'addRecentShop') { event.preventDefault(); addRecentShop(actionEl.dataset.text); return; }
+    if (action === 'forgetRecentShop') { event.preventDefault(); forgetRecentShop(actionEl.dataset.text); return; }
+    if (action === 'addUpkeep') { event.preventDefault(); openUpkeepModal(); return; }
+    if (action === 'editUpkeep') { event.preventDefault(); openUpkeepModal(actionEl.dataset.id); return; }
+    if (action === 'deleteUpkeep') { event.preventDefault(); deleteUpkeep(actionEl.dataset.id); return; }
+    if (action === 'toggleUpkeepDone') { event.preventDefault(); toggleUpkeepDone(actionEl.dataset.id); return; }
+    if (action === 'viewUpkeep') { event.preventDefault(); closeModal({ restoreFocus: false, silent: true }); openUpkeepView(actionEl.dataset.id); return; }
+    if (action === 'setUpkeepFilter') { event.preventDefault(); ui.upkeepFilter = UPKEEP_CATS[actionEl.dataset.filter] ? actionEl.dataset.filter : 'all'; renderApp({ preserveScroll: true }); return; }
+    if (action === 'toggleTheme') { event.preventDefault(); setThemePref(isDarkNow() ? 'light' : 'dark'); if (ui.view === 'settings') renderApp({ preserveScroll: true, animate: false }); return; }
+    if (action === 'setTheme') { event.preventDefault(); setThemePref(actionEl.dataset.value); renderApp({ preserveScroll: true, animate: false }); return; }
+    if (action === 'pickMemberPhoto') { event.preventDefault(); pickMemberPhoto(); return; }
+    if (action === 'removeMemberPhoto') { event.preventDefault(); setPhotoPreview(''); return; }
     if (action === 'addMember') { event.preventDefault(); openMemberModal(); return; }
     if (action === 'editMember') { event.preventDefault(); openMemberModal(actionEl.dataset.id); return; }
     if (action === 'viewMember') { event.preventDefault(); openMemberDetail(actionEl.dataset.id); return; }
@@ -5392,5 +6346,6 @@
   }
 
   registerOfflineSupport();
+  window.onSerumahThemeChange = () => { updateThemeToggle(); if (ui.view === 'settings') renderApp({ preserveScroll: true, animate: false }); };
   init();
 })();

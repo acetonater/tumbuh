@@ -1,5 +1,16 @@
 # Catatan perubahan
 
+## 2.1.0 — 18 November 2026
+
+- **Beranda dirombak:** anggota keluarga di atas "Perlu perhatian", dengan tiga pintasan bulat (Anggota, Dokumen, Tagihan) di sisinya. Kartu belanja dan kontak darurat dihapus dari beranda.
+- **Menu Rumah keluarga diurutkan ulang:** Beranda, Anggota, Kontak, Tagihan, Belanja, Dokumen, Perawatan, Garansi, lalu Hub Tumbuh kembang.
+- **Foto anggota** bisa diunggah (diperkecil otomatis di perangkat).
+- **Obat rutin** per anggota (tanpa kartu darurat terpisah).
+- **Perawatan** rumah dan kendaraan, **Garansi** barang, dan **Belanja** bersama.
+- **Mode gelap** dengan pilihan otomatis/terang/gelap.
+- **Latar bertema hijau dengan garis kontur** (`contour.svg`).
+- Cache offline diperbarui (`tumbuh-shell-v4`).
+
 ## 2.0.0 — 23 Oktober 2026 · Serumah
 
 - Aplikasi menjadi **Serumah**, dasbor data keluarga. Tumbuh kini menjadi salah satu hub.

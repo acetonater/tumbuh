@@ -6,7 +6,7 @@
   <meta name="theme-color" content="#174e42" />
   <meta name="description" content="Serumah — data penting keluarga dan catatan tumbuh kembang anak dalam satu tempat." />
   <meta name="robots" content="noindex, nofollow" />
-  <meta name="color-scheme" content="light" />
+  <meta name="color-scheme" content="light dark" />
   <title>Serumah — Data Keluarga</title>
   <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='9' fill='%23174e42'/%3E%3Cpath d='M11 24h10M16 24v-8M16 16c0-3.3 2.7-6 6-6 0 3.3-2.7 6-6 6ZM16 18c0-2.8-2.2-5-5-5 0 2.8 2.2 5 5 5Z' fill='none' stroke='%23d5e49d' stroke-width='1.8' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E" />
   <link rel="manifest" href="manifest.webmanifest" />
@@ -16,6 +16,7 @@
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,500;9..144,600&family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
+  <script src="theme.js"></script>
   <link rel="stylesheet" href="styles.css" />
   <script src="app.js" defer></script>
 </head>
@@ -49,10 +50,6 @@
           <svg viewBox="0 0 24 24" aria-hidden="true"><use href="#i-users"></use></svg>
           <span>Anggota</span>
         </a>
-        <a class="nav-item nav-family" href="#documents" data-nav="documents">
-          <svg viewBox="0 0 24 24" aria-hidden="true"><use href="#i-id-card"></use></svg>
-          <span>Dokumen</span>
-        </a>
         <a class="nav-item nav-family" href="#contacts" data-nav="contacts">
           <svg viewBox="0 0 24 24" aria-hidden="true"><use href="#i-phone"></use></svg>
           <span>Kontak</span>
@@ -60,6 +57,22 @@
         <a class="nav-item nav-family" href="#bills" data-nav="bills">
           <svg viewBox="0 0 24 24" aria-hidden="true"><use href="#i-receipt"></use></svg>
           <span>Tagihan</span>
+        </a>
+        <a class="nav-item nav-family" href="#shopping" data-nav="shopping">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><use href="#i-cart"></use></svg>
+          <span>Belanja</span>
+        </a>
+        <a class="nav-item nav-family" href="#documents" data-nav="documents">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><use href="#i-id-card"></use></svg>
+          <span>Dokumen</span>
+        </a>
+        <a class="nav-item nav-family" href="#upkeep" data-nav="upkeep">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><use href="#i-wrench"></use></svg>
+          <span>Perawatan</span>
+        </a>
+        <a class="nav-item nav-family" href="#warranty" data-nav="warranty">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><use href="#i-tag"></use></svg>
+          <span>Garansi</span>
         </a>
         <p class="nav-label nav-label-spaced nav-tumbuh-label">Hub · Tumbuh kembang</p>
         <a class="nav-item" href="#dashboard" data-nav="dashboard">
@@ -130,6 +143,9 @@
             <span class="sync-dot"></span>
             <svg viewBox="0 0 24 24" aria-hidden="true"><use href="#i-cloud"></use></svg>
             <span id="syncChipText">Lokal</span>
+          </button>
+          <button class="icon-btn bordered theme-toggle" type="button" id="themeToggle" data-action="toggleTheme" aria-label="Ganti tema">
+            <svg viewBox="0 0 24 24" aria-hidden="true"><use href="#i-moon"></use></svg>
           </button>
           <span class="date-chip" id="headerDate">
             <svg viewBox="0 0 24 24" aria-hidden="true"><use href="#i-calendar"></use></svg>
@@ -218,6 +234,12 @@
       <symbol id="i-log-in" viewBox="0 0 24 24"><path d="M15 3h4a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2h-4"/><path d="m10 17 5-5-5-5"/><path d="M15 12H3"/></symbol>
       <symbol id="i-server" viewBox="0 0 24 24"><rect width="20" height="8" x="2" y="2" rx="2"/><rect width="20" height="8" x="2" y="14" rx="2"/><path d="M6 6h.01"/><path d="M6 18h.01"/></symbol>
       <symbol id="i-eye" viewBox="0 0 24 24"><path d="M2.1 12a10.9 10.9 0 0 1 19.8 0 10.9 10.9 0 0 1-19.8 0Z"/><circle cx="12" cy="12" r="3"/></symbol>
+      <symbol id="i-wrench" viewBox="0 0 24 24"><path d="M14.7 6.3a4 4 0 0 0 5 5L21 13a6 6 0 0 1-7.6 1.4l-6 6a2.1 2.1 0 0 1-3-3l6-6A6 6 0 0 1 11.8 3l1.6 1.4a4 4 0 0 0 1.3 1.9Z"/></symbol>
+      <symbol id="i-car" viewBox="0 0 24 24"><path d="M5 17h14"/><path d="M3.5 17v-4.2l1.9-4.9A2 2 0 0 1 7.3 6.6h9.4a2 2 0 0 1 1.9 1.3l1.9 4.9V17"/><path d="M3.5 12.8h17"/><circle cx="7.5" cy="17.2" r="1.8"/><circle cx="16.5" cy="17.2" r="1.8"/></symbol>
+      <symbol id="i-plug" viewBox="0 0 24 24"><path d="M9 2v5"/><path d="M15 2v5"/><path d="M6 7h12v4a6 6 0 0 1-12 0Z"/><path d="M12 17v5"/></symbol>
+      <symbol id="i-tag" viewBox="0 0 24 24"><path d="M12.6 2.6H20a1.4 1.4 0 0 1 1.4 1.4v7.4a2 2 0 0 1-.6 1.4l-8.2 8.2a2 2 0 0 1-2.8 0L3 14.2a2 2 0 0 1 0-2.8l8.2-8.2a2 2 0 0 1 1.4-.6Z"/><circle cx="16.5" cy="7.5" r="1.5"/></symbol>
+      <symbol id="i-cart" viewBox="0 0 24 24"><circle cx="9" cy="20" r="1.4"/><circle cx="18" cy="20" r="1.4"/><path d="M2.5 3h2.6l2.4 11.4a2 2 0 0 0 2 1.6h8.2a2 2 0 0 0 2-1.5L21.5 7H6"/></symbol>
+      <symbol id="i-camera" viewBox="0 0 24 24"><path d="M14.5 4h-5L7.5 6.5H4.5a2 2 0 0 0-2 2v9a2 2 0 0 0 2 2h15a2 2 0 0 0 2-2v-9a2 2 0 0 0-2-2h-3Z"/><circle cx="12" cy="13" r="3.5"/></symbol>
       <symbol id="i-home" viewBox="0 0 24 24"><path d="M3 10.5 12 3l9 7.5"/><path d="M5 9.5V20a1 1 0 0 0 1 1h4v-6h4v6h4a1 1 0 0 0 1-1V9.5"/></symbol>
       <symbol id="i-id-card" viewBox="0 0 24 24"><rect width="20" height="15" x="2" y="4.5" rx="2.5"/><circle cx="8.5" cy="11" r="2.3"/><path d="M5.2 16.5c.6-1.5 1.8-2.3 3.3-2.3s2.7.8 3.3 2.3"/><path d="M14.5 10h4.5"/><path d="M14.5 13.5h3"/></symbol>
       <symbol id="i-phone" viewBox="0 0 24 24"><path d="M22 16.9v3a2 2 0 0 1-2.2 2 19.8 19.8 0 0 1-8.6-3.1 19.5 19.5 0 0 1-6-6A19.8 19.8 0 0 1 2.1 4.2 2 2 0 0 1 4.1 2h3a2 2 0 0 1 2 1.7c.1 1 .4 1.9.7 2.8a2 2 0 0 1-.5 2.1L8 9.9a16 16 0 0 0 6 6l1.3-1.3a2 2 0 0 1 2.1-.5c.9.3 1.8.6 2.8.7a2 2 0 0 1 1.7 2Z"/></symbol>

@@ -8,6 +8,8 @@ const files = [
   'index.html',
   'styles.css',
   'app.js',
+  'theme.js',
+  'contour.svg',
   'robots.txt',
   'sw.js',
   'manifest.webmanifest',

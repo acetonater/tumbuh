@@ -720,6 +720,7 @@
     const familyName = h.name ? `Keluarga ${h.name}` : 'Rumah keluarga';
     const attention = attentionItems();
     const empty = !h.members.length && !h.documents.length && !h.contacts.length && !h.bills.length;
+    const locked = editLocked();
     const hour = new Date().getHours();
     const greet = hour < 11 ? 'Selamat pagi' : hour < 15 ? 'Selamat siang' : hour < 18 ? 'Selamat sore' : 'Selamat malam';
 
@@ -757,10 +758,9 @@
           <h1>${esc(familyName)}.</h1>
           <p class="view-sub">Data penting keluarga, siap dibuka kapan saja — bahkan tanpa internet.</p>
         </div>
-        <div class="view-actions">
-          <button class="btn btn-ghost" type="button" data-action="editHousehold">${ic('edit')} Nama keluarga</button>
+        ${locked ? '' : `<div class="view-actions">
           ${empty ? `<button class="btn btn-primary" type="button" data-action="addMember">${ic('plus')} Tambah anggota</button>` : ''}
-        </div>
+        </div>`}
       </div>
 
       <div class="home-search">
@@ -771,7 +771,12 @@
         <div id="homeResults">${homeResultsHTML()}</div>
       </div>
 
-      ${empty ? `
+      ${empty && locked ? `
+        <section class="card card-pad home-start home-locked">
+          <h2 class="card-title">${ic('lock')} Masuk untuk melihat dan mengisi data</h2>
+          <p class="card-sub">Data keluarga tersimpan di akun keluarga. Masuk dengan kata sandi keluarga untuk memuat dan mengubahnya.</p>
+          <button class="btn btn-primary" type="button" data-action="goView" data-view="family">${ic('lock')} Masuk lewat Sinkronisasi</button>
+        </section>` : empty ? `
         <section class="card card-pad home-start">
           <h2 class="card-title">Mulai isi rumah keluarga</h2>
           <p class="card-sub">Urutan yang disarankan: anggota dulu, lalu dokumen milik masing-masing, kontak penting, dan tagihan rutin.</p>
@@ -796,7 +801,7 @@
               <strong>${esc(memberShortName(m))}</strong>
               <small>${esc(m.relation)}${m.bloodType ? ` · ${esc(m.bloodType)}` : ''}</small>
               ${m.allergies ? `<span class="pill coral mini">${ic('alert')} Alergi</span>` : ''}
-            </button>`).join('')}</div>` : `<button class="btn btn-soft btn-sm" type="button" data-action="addMember">${ic('plus')} Tambah anggota</button>`}
+            </button>`).join('')}</div>` : (locked ? `<p class="hub-empty">${ic('lock')} Data anggota muncul setelah kamu masuk.</p>` : `<button class="btn btn-soft btn-sm" type="button" data-action="addMember">${ic('plus')} Tambah anggota</button>`)}
         </section>
         <nav class="home-shortcuts" aria-label="Pintasan">
           ${shortcuts.map((t) => `
@@ -2870,6 +2875,10 @@
     if (!formId) return;
     event.preventDefault();
     event.stopPropagation();
+    if (formId !== 'cloudLoginForm' && editLocked()) {
+      toast('Masuk dulu lewat menu Sinkronisasi untuk mengubah data.');
+      return;
+    }
     if (formId === 'childForm') handleChildSubmit(form);
     else if (formId === 'measurementForm') handleMeasurementSubmit(form);
     else if (formId === 'journalForm') handleJournalSubmit(form);
@@ -3284,7 +3293,37 @@
     };
   }
 
+  /* Mode terkunci: sebelum masuk dengan kata sandi keluarga, data hanya bisa dilihat. */
+  const LOCKED_ACTIONS = new Set([
+    'addChild', 'editChild', 'deleteChild', 'addMeasurement', 'editMeasurement', 'deleteMeasurement',
+    'addJournal', 'editJournal', 'deleteJournal', 'toggleMilestone', 'markVaccine', 'editVaccine', 'markNextVaccine', 'clearVaccine',
+    'importData', 'loadDemo', 'resetData',
+    'addMember', 'editMember', 'deleteMember', 'addDocument', 'editDocument', 'deleteDocument',
+    'addContact', 'editContact', 'deleteContact', 'addBill', 'editBill', 'deleteBill', 'toggleBillPaid', 'editHousehold',
+    'pickMemberPhoto', 'removeMemberPhoto', 'addUpkeep', 'editUpkeep', 'deleteUpkeep', 'toggleUpkeepDone',
+    'addWarranty', 'editWarranty', 'deleteWarranty', 'toggleShop', 'deleteShop', 'undoShop', 'clearDoneShop', 'addRecentShop', 'forgetRecentShop'
+  ]);
+  const LOCK_FREE_STATUSES = ['local'];
+  let lastLocked = null;
+
+  function editLocked() {
+    if (READ_ONLY_MODE || CLOUD.authenticated) return false;
+    return !LOCK_FREE_STATUSES.includes(CLOUD.status);
+  }
+
+  function applyLockState() {
+    const locked = editLocked();
+    document.body.classList.toggle('locked', locked);
+    if (lastLocked !== null && lastLocked !== locked && ui.view !== 'family' && cloudPageSafeToRender()) {
+      lastLocked = locked;
+      renderApp({ preserveScroll: true, animate: false });
+      return;
+    }
+    lastLocked = locked;
+  }
+
   function updateCloudChip() {
+    applyLockState();
     const chip = $('#syncChip');
     if (!chip) return;
     if (READ_ONLY_MODE) {
@@ -4992,6 +5031,11 @@
               <div><h2>Cadangan &amp; pemulihan</h2><p>Simpan salinan data dalam satu berkas JSON.</p></div>
             </div>
             <div class="data-row">
+              <span class="data-row-icon">${ic('home')}</span>
+              <span class="data-row-copy"><strong>Nama keluarga</strong><small>${hh().name ? `Keluarga ${esc(hh().name)}` : 'Belum diisi. Tampil sebagai judul di beranda.'}</small></span>
+              <button class="btn btn-ghost btn-sm" type="button" data-action="editHousehold">${ic('edit')} Ubah</button>
+            </div>
+            <div class="data-row">
               <span class="data-row-icon">${ic('cloud')}</span>
               <span class="data-row-copy"><strong>Sinkronisasi keluarga</strong><small>${CLOUD.authenticated ? `Satu akun keluarga · ${cloudStatusInfo().label.toLowerCase()}` : 'Atur akun dan tautan lihat-saja lewat Netlify.'}</small></span>
               <button class="btn btn-ghost btn-sm" type="button" data-action="goView" data-view="family">${ic('arrow-right')} Buka</button>
@@ -6061,6 +6105,12 @@
       return;
     }
 
+    if (editLocked() && LOCKED_ACTIONS.has(action)) {
+      event.preventDefault();
+      toast('Masuk dulu lewat menu Sinkronisasi untuk mengubah data.');
+      return;
+    }
+
     if (action === 'toggleProfileMenu') {
       toggleProfileMenu();
       return;
@@ -6318,6 +6368,7 @@
 
   function init() {
     document.body.classList.toggle('readonly', READ_ONLY_MODE);
+    applyLockState();
     const hashView = location.hash.replace('#', '');
     if (VALID_VIEWS.includes(hashView)) ui.view = hashView;
     if (READ_ONLY_MODE) {

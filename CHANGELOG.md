@@ -1,5 +1,10 @@
 # Catatan perubahan
 
+## 2.1.1 — 18 November 2026
+
+- **Mode terkunci:** sebelum masuk dengan kata sandi keluarga, semua fitur tambah, ubah, hapus, centang, impor, dan data contoh disembunyikan dan diblokir. Data tetap bisa dilihat. Beranda kosong menampilkan ajakan masuk lewat Sinkronisasi.
+- Tombol "Nama keluarga" dihapus dari Beranda; nama keluarga diubah lewat **Pengaturan** (setelah masuk).
+
 ## 2.1.0 — 18 November 2026
 
 - **Beranda dirombak:** anggota keluarga di atas "Perlu perhatian", dengan tiga pintasan bulat (Anggota, Dokumen, Tagihan) di sisinya. Kartu belanja dan kontak darurat dihapus dari beranda.

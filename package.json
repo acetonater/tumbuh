@@ -1,6 +1,6 @@
 {
   "name": "serumah-keluarga",
-  "version": "2.1.1",
+  "version": "2.1.2",
   "private": true,
   "type": "module",
   "description": "Serumah — data keluarga dan hub Tumbuh (tumbuh kembang anak) dengan sinkronisasi lewat Netlify.",

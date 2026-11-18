@@ -1,5 +1,9 @@
 # Catatan perubahan
 
+## 2.1.2 — 18 November 2026
+
+- Perbaikan: ikon gembok di kartu "Anggota keluarga" yang kosong tampil terlalu besar saat belum masuk.
+
 ## 2.1.1 — 18 November 2026
 
 - **Mode terkunci:** sebelum masuk dengan kata sandi keluarga, semua fitur tambah, ubah, hapus, centang, impor, dan data contoh disembunyikan dan diblokir. Data tetap bisa dilihat. Beranda kosong menampilkan ajakan masuk lewat Sinkronisasi.
